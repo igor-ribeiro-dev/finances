@@ -88,6 +88,7 @@ breakdowns.
 | categoryId | FK → Category (null = total budget across all categories) |
 | month | Year-month (e.g., 2026-05) |
 | limitCents | Integer (cents) |
+| alertThresholdPercent | Integer 1–100 (null = use default 80%) |
 
 **Valid combinations**:
 - `memberId=null, categoryId=null` → total family budget for the month
@@ -112,7 +113,11 @@ what you *did* pay.
 | description | Name of the bill (e.g., "Aluguel", "Conta de luz", "Fatura Nubank") |
 | estimatedAmountCents | Integer (cents) — expected amount |
 | dueDay | Day of month (1–31) the bill is typically due |
-| isRecurring | Boolean — if true, auto-populates every month |
+| isRecurring | Boolean — if true, auto-populates at the defined interval |
+| recurrenceInterval | Enum: MONTHLY, ANNUAL (null when isRecurring = false) |
+| recurrenceDayOfMonth | Integer 1–31 (null for ANNUAL); clamped to last day of month when day does not exist |
+| recurrenceMonthOfYear | Integer 1–12 (ANNUAL only; null for MONTHLY) |
+| recurrenceStatus | Enum: ACTIVE, PAUSED, STOPPED (null when isRecurring = false) — PAUSED skips future periods; STOPPED generates no future entries; past entries always preserved |
 | createdAt | Timestamp |
 
 **Fatura identification**: When `creditCardId` is set, this Bill is a credit
