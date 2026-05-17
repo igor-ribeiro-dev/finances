@@ -1,0 +1,244 @@
+# Feature Specification: Product Roadmap Guide
+
+**Feature Branch**: `003-product-roadmap`
+
+**Created**: 2026-05-17
+
+**Status**: Draft
+
+**Input**: User description: "Um plano que deve conter o guia de futuas especificações para atingirmos o produto final que desejamos com este app de finanças. A idéia e conter uma lista de feature/specs que deverão ser especificadas no futuro."
+
+## User Scenarios & Testing *(mandatory)*
+
+### User Story 1 - Feature Selection for Next Sprint (Priority: P1)
+
+A product owner opens the roadmap to decide which feature should be specified
+and built next. They can see all planned features, their priorities, and brief
+descriptions, allowing them to make an informed decision about where to invest
+development effort.
+
+**Why this priority**: Without a prioritized feature list, each new development
+cycle requires rebuilding context from scratch. This is the most frequent and
+impactful use of the roadmap.
+
+**Independent Test**: A product owner reads the roadmap document. They should
+be able to identify the highest-priority unspecified feature and understand
+what it involves well enough to immediately initiate `/speckit-specify` for it.
+
+**Acceptance Scenarios**:
+
+1. **Given** the roadmap document exists, **When** a product owner reads it,
+   **Then** they can identify the top-priority unbuilt feature without
+   consulting any other document.
+
+2. **Given** a feature has been specified and built, **When** the product owner
+   checks the roadmap, **Then** they can mark it as complete and see which
+   feature should come next.
+
+3. **Given** the roadmap lists multiple features at the same priority tier,
+   **When** the product owner reviews them, **Then** each feature description
+   provides enough context to choose between them.
+
+---
+
+### User Story 2 - New Team Member Orientation (Priority: P2)
+
+A new developer or designer joins the project and reads the roadmap to
+understand where the product is going. They can see what has been built, what
+is in progress, and what is planned, giving them the full picture of the
+app's intended scope.
+
+**Why this priority**: Onboarding is a recurring need. A clear product roadmap
+reduces ramp-up time and prevents misaligned contributions.
+
+**Independent Test**: A person with no prior context reads the roadmap. After
+reading it, they should be able to describe the intended product in their own
+words and name the next two features to be worked on.
+
+**Acceptance Scenarios**:
+
+1. **Given** the roadmap document exists, **When** a new team member reads it,
+   **Then** they understand the overall product vision in under 5 minutes.
+
+2. **Given** features are grouped by priority tier, **When** a new member
+   reviews them, **Then** they can distinguish between what is essential (P1),
+   important (P2), and nice-to-have (P3).
+
+---
+
+### User Story 3 - Architectural Decision Support (Priority: P3)
+
+A developer making a technical decision during implementation checks the
+roadmap to understand what features are coming. They can ensure their current
+work does not block or complicate future features.
+
+**Why this priority**: Preventing rework by considering future requirements is
+valuable, but secondary to the roadmap's role as a planning tool.
+
+**Independent Test**: A developer reads the roadmap and identifies at least one
+future feature that has architectural implications for a feature currently
+being built.
+
+**Acceptance Scenarios**:
+
+1. **Given** a developer is designing a data model, **When** they consult the
+   roadmap, **Then** they can see upcoming features that interact with that
+   data model.
+
+2. **Given** the roadmap is updated with a new feature, **When** a developer
+   reviews it, **Then** they understand whether it affects current in-progress
+   work.
+
+---
+
+### Edge Cases
+
+- What happens when a planned feature becomes irrelevant after a later feature
+  is specified? The roadmap must allow features to be removed or marked as
+  superseded.
+- How does the roadmap stay consistent when a new feature is split into two
+  during specification? The original entry should be replaced by references to
+  the two new specs.
+- What if two features in different priority tiers turn out to be dependent?
+  The roadmap must express dependencies between features.
+
+## Requirements *(mandatory)*
+
+### Functional Requirements
+
+- **FR-001**: The roadmap MUST define the product vision in a single,
+  non-technical paragraph accessible to any stakeholder.
+
+- **FR-002**: The roadmap MUST list all planned features with a short name,
+  a one-paragraph description, and a priority tier (P1, P2, P3).
+
+- **FR-003**: Each feature entry MUST contain enough information to initiate a
+  full `/speckit-specify` session without requiring additional research.
+
+- **FR-004**: Features MUST be grouped by priority tier so the build order is
+  immediately visible.
+
+- **FR-005**: Each feature entry MUST indicate its current status: Planned,
+  In Specification, Specified, In Development, or Complete.
+
+- **FR-006**: The roadmap MUST express dependencies between features where
+  one feature must be completed before another can begin.
+
+- **FR-007**: The roadmap MUST be a living document — it MUST be possible to
+  add, remove, reprioritize, or update any feature entry without invalidating
+  other entries.
+
+### Product Vision
+
+This app is a family budget tracker. It allows a household — made up of
+multiple family members — to register expenses, monitor how spending is
+distributed across categories, and track budgets at two levels: one shared
+family budget and individual budgets per member. The goal is not to replace
+a full accounting system but to give families a clear, simple view of where
+their money is going and whether they are staying within their limits.
+
+The entire user interface is presented exclusively in Brazilian Portuguese
+(PT-BR). This is a fixed product constraint that applies to every feature
+across all priority tiers.
+
+### Cross-Cutting Constraints
+
+- **Language**: The UI MUST be exclusively in Brazilian Portuguese (PT-BR).
+  No language selection or internationalization mechanism is required.
+  All labels, messages, error texts, and navigation elements must be in PT-BR.
+
+### Planned Features
+
+#### Priority 1 — Core (must exist for the app to be usable)
+
+| # | Feature | Description | Status | Depends On |
+|---|---------|-------------|--------|------------|
+| 004 | User Authentication & Family Groups | Register, log in, and manage credentials. Create a family group or join one via a shareable invite link or short code. All members of the family group are equal — any member can view and edit all expenses and budgets belonging to the group. | Planned | 001 |
+| 005 | Expense Registration | Record individual expenses with an amount, date, description, and the family member the expense belongs to (assignable to any member, not necessarily the one recording it). Category assignment is optional. The fundamental data entry action of the app. | Planned | 004 |
+| 006 | Expense Categories | Define and manage a two-level category hierarchy: root categories (e.g., Food, Housing) and sub-categories under each root (e.g., Food → Groceries, Restaurants). Categories are shared across the family group and used to group and analyze spending. | Planned | 004 |
+| 007 | Budget Management | Set a global family budget and individual budgets per family member for each calendar month. Category budgets can be defined at the root level (e.g., Food: R$1.500/month) and optionally broken down further into sub-category limits (e.g., Food → Groceries: R$900, Food → Restaurants: R$600). Sub-category budgets are optional; a root-level cap alone is valid. | Planned | 005, 006 |
+| 008 | Budget & Expense Dashboard | A summary view for the current calendar month showing: total spent vs. family budget, each member's spending vs. their individual monthly budget, and a category breakdown with percentages. | Planned | 007 |
+| 015 | Monthly Payment Tracker | A checklist-style view of all financial obligations for a selected month, combining two sources: (1) expenses already registered in the app that can be marked as settled, and (2) expected monthly bills — including recurring expenses (feature 012) which auto-populate every relevant month as Pending, plus manually added one-off bills. Each item has one of three states: Pending, Paid, or Cancelled. When a bill is marked as Paid, the payment date and actual amount paid are recorded separately from the originally estimated amount, and a corresponding expense entry is created automatically. Cancelled items remain visible but excluded from totals. | Planned | 005, 012 |
+
+#### Priority 2 — Important (significantly improves usability)
+
+| # | Feature | Description | Status | Depends On |
+|---|---------|-------------|--------|------------|
+| 009 | Category Spending Analytics | Visual charts showing how spending is distributed across categories for a selected period, with percentage share for each category. Viewable for the whole family or filtered by individual member. | Planned | 006, 007 |
+| 010 | Budget Alerts | Notify any member when spending approaches or exceeds a budget limit — at both the individual and family level. All members receive the same visibility into budget status. | Planned | 007 |
+| 011 | Expense History & Filtering | Browse all recorded expenses for the family or filtered by member, category, or date range. Allows reviewing and correcting past entries. | Planned | 005 |
+
+#### Priority 3 — Extended (valuable but not essential for launch)
+
+| # | Feature | Description | Status | Depends On |
+|---|---------|-------------|--------|------------|
+| 012 | Recurring Expenses | Mark an expense as recurring (e.g., monthly rent, subscriptions) so it is automatically logged at its defined interval without manual re-entry. Recurring expenses also auto-populate the Monthly Payment Tracker (feature 015) each month as Pending items, eliminating the need to manually add known fixed obligations. | Planned | 005 |
+| 013 | Period-over-Period Reports | Monthly and custom-period reports comparing total spending, per-category spending, and budget adherence across multiple months. Useful for identifying trends. | Planned | 009 |
+| 014 | Data Export | Export the family's expense history as a standard file (e.g., CSV) for external review, backup, or tax purposes. | Planned | 005 |
+
+### Key Entities
+
+- **Roadmap**: The document itself — a versioned list of features with their
+  status and priority, used to guide specification and development work.
+- **Feature Entry**: A single item in the roadmap — includes a sequential
+  number, name, description, priority tier, status, and dependency list.
+- **Priority Tier**: A grouping label (P1, P2, P3) indicating when a feature
+  should be built relative to others.
+- **Status**: The current lifecycle stage of a feature entry — Planned,
+  In Specification, Specified, In Development, or Complete.
+
+## Success Criteria *(mandatory)*
+
+### Measurable Outcomes
+
+- **SC-001**: Any team member can identify the highest-priority unspecified
+  feature and begin writing its spec within 5 minutes of reading the roadmap.
+- **SC-002**: The roadmap covers 100% of the features needed to deliver a
+  usable family budget tracker (no missing core functionality).
+- **SC-003**: Every feature entry is understandable to a non-technical
+  stakeholder without requiring supplementary explanation.
+- **SC-004**: The roadmap remains accurate — within one working day of any
+  feature changing status, the roadmap is updated to reflect it.
+- **SC-005**: New features can be added to the roadmap without disrupting or
+  rewriting existing entries.
+
+## Clarifications
+
+### Session 2026-05-17
+
+- Q: Within a family group, can all members see everyone's expenses and individual budgets — or should there be a distinction between a family admin and regular members? → A: All members are equal — any member can view and edit all expenses and budgets.
+- Q: Which budget model should the app support — per-category budgets, total spending caps, or both? → A: Expenses are individually categorized (optional); categories are hierarchical with root and sub-categories. Budget scope aligns with this structure.
+- Q: What period should budgets be defined for — monthly fixed calendar month, custom periods, or both? → A: Monthly, fixed calendar month.
+- Q: When registering an expense, does it always belong to the recorder, or can it be assigned to any family member? → A: Assignable — the recorder selects which family member the expense belongs to.
+- Q: How does a new member join an existing family group? → A: Invite by link or code — the group creator generates a shareable link or short code.
+
+### Session 2026-05-17 (continued)
+
+- Q: In the Monthly Payment Tracker, where does the list of items come from — registered expenses, a separate bills list, or both? → A: Both — registered expenses can be marked as settled AND a separate "expected bills" list exists for known monthly obligations; paying a bill creates a corresponding expense entry.
+- Q: At which category level should monthly budgets be set — root only, sub-category only, or both? → A: Both levels — users set a root-category cap and can optionally break it down into sub-category limits; sub-category budgets are optional.
+- Q: What are the valid payment states in the Monthly Payment Tracker? → A: Three states — Pending, Paid, and Cancelled. Cancelled items remain visible but excluded from totals.
+- Q: When marking a bill as Paid with a different actual amount, does the actual amount replace the original or are both stored? → A: Both stored — original expected amount is preserved as reference; actual payment amount recorded separately on the payment event.
+- Q: Does the Monthly Payment Tracker auto-populate from Recurring Expenses each month? → A: Yes — recurring expenses automatically appear as Pending items in the tracker for each relevant month.
+
+## Assumptions
+
+- The target product is a family budget tracker for a single household, not
+  a multi-tenant or business accounting product.
+- The UI language is fixed as Brazilian Portuguese (PT-BR) for all features;
+  no multilingual support or locale switching is required.
+- Each household forms one "family group"; members join via a shareable
+  invite link or short code generated by the group creator.
+  Cross-household sharing is out of scope.
+- All monetary values are recorded in a single currency (multi-currency
+  support is out of scope).
+- There is no integration with bank accounts or automatic transaction import;
+  all expenses are entered manually.
+- The app tracks expenses (outflows) only; income tracking is out of scope
+  for the initial version.
+- Feature numbers in the roadmap are sequential and align with the spec
+  directory numbering convention already established in this project.
+  Specs 001 (monorepo architecture), 002 (backend entities), and 003
+  (this roadmap) are infrastructure/planning artifacts and do not appear
+  as product features.
+- Features in P3 may be deferred or removed based on user feedback gathered
+  after P1 and P2 features are live.
