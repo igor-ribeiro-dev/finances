@@ -1,0 +1,86 @@
+openapi: "3.1.0"
+
+info:
+  title: Finances Backend API
+  version: "0.1.0"
+  description: Base API contract for the Finances backend service.
+
+servers:
+  - url: "http://localhost:{port}"
+    description: Local development
+    variables:
+      port:
+        default: "3001"
+        description: Configured via PORT environment variable
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      description: >
+        Returns the operational status of the backend service.
+        This endpoint is unauthenticated per Constitution Principle III.
+      tags:
+        - Observability
+      responses:
+        "200":
+          description: Service is healthy and accepting requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                service: backend
+                timestamp: "2026-05-17T10:00:00.000Z"
+        "503":
+          description: Service is unhealthy (e.g., dependency check failed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                code: SERVICE_UNAVAILABLE
+                message: "Service is currently unavailable"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          description: Operational status of the service
+        service:
+          type: string
+          example: backend
+          description: Name of the service (for log prefix alignment)
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the response
+
+    ErrorResponse:
+      type: object
+      required:
+        - status
+        - code
+        - message
+      properties:
+        status:
+          type: string
+          enum: [error]
+        code:
+          type: string
+          description: Machine-readable error code
+          example: SERVICE_UNAVAILABLE
+        message:
+          type: string
+          description: Human-readable error description
