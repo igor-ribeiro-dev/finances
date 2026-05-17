@@ -24,10 +24,10 @@
 
 **⚠️ CRITICAL**: Resolve these before any user story work.
 
-- [ ] T004 Resolve CHK039 in specs/003-product-roadmap/spec.md — define whether sub-category budget totals exceeding root cap triggers a validation error or an advisory warning [Spec §007, data-model.md Budget] — update feature 007 description inline AND append decision to Clarifications; update data-model.md Budget entity if a constraint is added
-- [ ] T005 Resolve CHK041 in specs/003-product-roadmap/spec.md — clarify whether the family budget total is independent of member budgets or derived as their sum [Spec §007] — update feature 007 description inline AND append decision to Clarifications
-- [ ] T006 Resolve CHK052 in specs/003-product-roadmap/spec.md and data-model.md — specify whether future BillPayment entries are cancelled when a recurring Bill is STOPPED [Spec §012, data-model.md Bill] — update feature 012 description inline AND update data-model.md Bill recurrenceStatus notes AND append to Clarifications
-- [ ] T007 Resolve CHK054 in specs/003-product-roadmap/spec.md and data-model.md — define whether Budget.limitCents = 0 means "no spending allowed" (immediate alert) or "no budget set" (alerts disabled) [data-model.md Budget] — update data-model.md Budget entity AND append to Clarifications
+- [x] T004 Resolve CHK039 in specs/003-product-roadmap/spec.md — define whether sub-category budget totals exceeding root cap triggers a validation error or an advisory warning [Spec §007, data-model.md Budget] — update feature 007 description inline AND append decision to Clarifications; update data-model.md Budget entity if a constraint is added
+- [x] T005 Resolve CHK041 in specs/003-product-roadmap/spec.md — clarify whether the family budget total is independent of member budgets or derived as their sum [Spec §007] — update feature 007 description inline AND append decision to Clarifications
+- [x] T006 Resolve CHK052 in specs/003-product-roadmap/spec.md and data-model.md — specify whether future BillPayment entries are cancelled when a recurring Bill is STOPPED [Spec §012, data-model.md Bill] — update feature 012 description inline AND update data-model.md Bill recurrenceStatus notes AND append to Clarifications
+- [x] T007 Resolve CHK054 in specs/003-product-roadmap/spec.md and data-model.md — define whether Budget.limitCents = 0 means "no spending allowed" (immediate alert) or "no budget set" (alerts disabled) [data-model.md Budget] — update data-model.md Budget entity AND append to Clarifications
 - [ ] T008 [P] Update specs/003-product-roadmap/research.md with decisions from T004–T007 as Decisions 23–26
 
 **Checkpoint**: All blocking checklist items resolved — user story validation can now begin.
