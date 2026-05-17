@@ -12,9 +12,9 @@
 
 - [ ] CHK037 — Is it unambiguously specified that ALL expenses (both CASH_OR_DEBIT and CREDIT_CARD) count toward budget totals at expenseDate, with no exceptions? [Clarity, Spec §005, data-model.md Expense]
 - [ ] CHK038 — Are budget totals defined as applying per calendar month (year-month boundary), and is there a clear rule for which month an expense at exactly midnight on a month boundary belongs to? [Clarity, Gap]
-- [ ] CHK039 — Is the budget hierarchy constraint (sub-category limit cannot exceed root-category cap) specified as either a validation rule or an advisory warning? The spec says sub-category budgets are "optional" but does not define what happens when their sum exceeds the root cap. [Ambiguity, Spec §007]
+- [x] CHK039 — Is the budget hierarchy constraint (sub-category limit cannot exceed root-category cap) specified as either a validation rule or an advisory warning? The spec says sub-category budgets are "optional" but does not define what happens when their sum exceeds the root cap. [Ambiguity, Spec §007] → RESOLVED: advisory warning only; save is never blocked
 - [ ] CHK040 — Is the alertThresholdPercent rule — default 80%, per-budget override — specified consistently in both the spec (feature 010) and data-model (Budget.alertThresholdPercent)? [Consistency, Spec §010, data-model.md]
-- [ ] CHK041 — Are budget totals defined for the family level AND per-member level as independent calculations, or is the family total derived from summing member totals? The spec defines both but does not clarify the relationship. [Clarity, Ambiguity, Spec §007]
+- [x] CHK041 — Are budget totals defined for the family level AND per-member level as independent calculations, or is the family total derived from summing member totals? The spec defines both but does not clarify the relationship. [Clarity, Ambiguity, Spec §007] → RESOLVED: independent — family budget set directly; no required relationship to member totals
 
 ---
 
@@ -46,7 +46,7 @@
 
 - [ ] CHK050 — Is the BillPayment PAID → PENDING undo transition fully specified: does it nullify paidAmountCents, paymentDate, and delete the linked Expense? Are there constraints on when undo is allowed (e.g., only if the linked Expense hasn't already been referenced by another calculation)? [Completeness, data-model.md BillPayment]
 - [ ] CHK051 — Is the recurrenceStatus lifecycle (ACTIVE → PAUSED → ACTIVE resume; ACTIVE → STOPPED permanently) defined with all valid transitions? Is PAUSED → STOPPED allowed, and is STOPPED → ACTIVE (restart) defined or explicitly excluded? [Completeness, data-model.md Bill]
-- [ ] CHK052 — When a recurring Bill transitions to STOPPED, is it specified whether existing future-dated BillPayment entries (already generated for upcoming months) are cancelled or left as-is? [Edge Case, Gap, Spec §012]
+- [x] CHK052 — When a recurring Bill transitions to STOPPED, is it specified whether existing future-dated BillPayment entries (already generated for upcoming months) are cancelled or left as-is? [Edge Case, Gap, Spec §012] → RESOLVED: auto-cancelled (PENDING → CANCELLED); past entries preserved
 
 ---
 
@@ -55,7 +55,7 @@
 *Are monetary value rules sufficient to prevent calculation errors?*
 
 - [ ] CHK053 — Is the "all monetary values stored as integers (cents)" rule consistently stated across spec, data-model, and plan? Are there any fields (amountCents, limitCents, paidAmountCents, totalCents, estimatedAmountCents) missing the integer constraint in the data-model? [Consistency, data-model.md, Spec §Constitution]
-- [ ] CHK054 — Is it specified what happens when a budget limitCents is set to zero — does it mean "no spending allowed" (triggers alert immediately) or "no budget set" (alerts disabled)? [Clarity, Ambiguity, data-model.md Budget]
+- [x] CHK054 — Is it specified what happens when a budget limitCents is set to zero — does it mean "no spending allowed" (triggers alert immediately) or "no budget set" (alerts disabled)? [Clarity, Ambiguity, data-model.md Budget] → RESOLVED: zero = budget inactive; no alerts; spending unconstrained
 
 ## Notes
 

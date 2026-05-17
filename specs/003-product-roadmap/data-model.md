@@ -87,8 +87,8 @@ breakdowns.
 | memberId | FK → Member (null = family-level budget) |
 | categoryId | FK → Category (null = total budget across all categories) |
 | month | Year-month (e.g., 2026-05) |
-| limitCents | Integer (cents) |
-| alertThresholdPercent | Integer 1–100 (null = use default 80%) |
+| limitCents | Integer (cents); 0 = budget inactive (no spending constraint, no alerts) |
+| alertThresholdPercent | Integer 1–100 (null = use default 80%; ignored when limitCents = 0) |
 
 **Valid combinations**:
 - `memberId=null, categoryId=null` → total family budget for the month
@@ -117,7 +117,7 @@ what you *did* pay.
 | recurrenceInterval | Enum: MONTHLY, ANNUAL (null when isRecurring = false) |
 | recurrenceDayOfMonth | Integer 1–31 (null for ANNUAL); clamped to last day of month when day does not exist |
 | recurrenceMonthOfYear | Integer 1–12 (ANNUAL only; null for MONTHLY) |
-| recurrenceStatus | Enum: ACTIVE, PAUSED, STOPPED (null when isRecurring = false) — PAUSED skips future periods; STOPPED generates no future entries; past entries always preserved |
+| recurrenceStatus | Enum: ACTIVE, PAUSED, STOPPED (null when isRecurring = false) — PAUSED skips future periods; STOPPED auto-cancels all future PENDING BillPayments and generates no new entries; past settled/cancelled entries always preserved |
 | createdAt | Timestamp |
 
 **Fatura identification**: When `creditCardId` is set, this Bill is a credit
