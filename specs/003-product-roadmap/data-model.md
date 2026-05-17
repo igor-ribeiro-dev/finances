@@ -6,6 +6,15 @@ This document provides a high-level domain entity overview for the entire
 product. Individual feature specs will refine attributes, validations, and
 relationships as each feature is planned.
 
+## Key Architectural Rules
+
+1. **Monetary values as integers**: All amounts stored as `INTEGER` (cents). Never IEEE 754 floats. (Constitution Principle III)
+2. **Calculation rule split**: Budget totals include ALL expenses (CASH_OR_DEBIT + CREDIT_CARD) at `expenseDate`. Cash-outflow totals include only CASH_OR_DEBIT expenses + fatura BillPayments — CREDIT_CARD child expenses are excluded to prevent double-counting.
+3. **Category max depth 2**: Root categories only have sub-categories; sub-categories cannot have children.
+4. **Monthly budget period**: Budgets are defined per calendar month (year-month). `limitCents = 0` means the budget is inactive (no constraint, no alerts).
+
+---
+
 All monetary values are stored as integers (cents) in accordance with
 Constitution Principle III.
 
@@ -54,24 +63,6 @@ A two-level expense category shared across the FamilyGroup.
 
 **Constraint**: Maximum depth of 2 (root + one sub-level). A sub-category
 cannot itself have children.
-
----
-
-### Expense
-A recorded financial outflow belonging to a family member. The foundational
-data entry of the app.
-
-| Field | Notes |
-|-------|-------|
-| id | Unique identifier |
-| familyGroupId | FK → FamilyGroup |
-| memberId | FK → Member (the member the expense belongs to) |
-| recordedById | FK → Member (the member who entered the data) |
-| categoryId | FK → Category (nullable — category assignment is optional) |
-| amountCents | Integer (cents) |
-| description | Free-text description |
-| expenseDate | Calendar date of the expense |
-| createdAt | Timestamp |
 
 ---
 

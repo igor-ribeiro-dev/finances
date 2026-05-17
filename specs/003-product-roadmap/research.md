@@ -307,3 +307,58 @@ including pending faturas; the card detail view gives transaction-level
 transparency for a specific card.
 
 **Alternatives considered**: Dashboard only; tracker only; card view only.
+
+---
+
+## Decision 23: Sub-category Budget Constraint (CHK039)
+
+**Decision**: When sub-category budgets sum to more than the root category cap,
+the system saves the values and shows an advisory warning. Saving is never blocked.
+
+**Rationale**: Household budgeting is imprecise; blocking saves frustrates users
+who want aspirational sub-category targets. A warning gives information without
+preventing intent.
+
+**Alternatives considered**: Hard validation error (blocked save); silent (no
+validation). Both rejected — first is too restrictive, second gives no feedback.
+
+---
+
+## Decision 24: Family Budget Calculation (CHK041)
+
+**Decision**: The family budget total is independent — set directly by any
+member with no required relationship to the sum of individual member budgets.
+
+**Rationale**: Allows a total household cap regardless of how individual
+allocations are divided. Prevents loss of an "uncategorized" shared spending pool.
+
+**Alternatives considered**: Derived sum of member budgets; both independent and
+derived shown. Rejected — first removes flexibility, second adds complexity.
+
+---
+
+## Decision 25: Recurring Bill STOPPED State (CHK052)
+
+**Decision**: When a recurring Bill is set to STOPPED, all PENDING BillPayment
+entries for months after today are automatically set to CANCELLED.
+
+**Rationale**: Future Pending entries for a stopped subscription would create
+incorrect pending-obligation totals in the tracker. Auto-cancelling reflects
+real-world intent without requiring manual cleanup.
+
+**Alternatives considered**: Leave as-is (user cancels manually); delete entirely.
+Rejected — first creates confusion, second loses audit trail.
+
+---
+
+## Decision 26: Zero Budget Limit (CHK054)
+
+**Decision**: Budget.limitCents = 0 means the budget is inactive — no spending
+constraint and no alerts fire for that budget.
+
+**Rationale**: Zero is the natural default for a newly created, unfilled budget
+entry. Treating zero as "no spending allowed" would immediately trigger alert spam.
+An explicit non-zero value signals the user actively set a limit.
+
+**Alternatives considered**: Zero = no spending allowed (immediate alert).
+Rejected — causes false alerts on default/unfilled budget entries.
