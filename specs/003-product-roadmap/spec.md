@@ -141,6 +141,10 @@ The entire user interface is presented exclusively in Brazilian Portuguese
 (PT-BR). This is a fixed product constraint that applies to every feature
 across all priority tiers.
 
+### Glossary
+
+- **Fatura**: The monthly credit card statement bill — the single payment that settles all purchases made with a credit card in a given billing period. In the app, a fatura is represented as a Bill with a creditCardId, manually registered by the user at payment time.
+
 ### Cross-Cutting Constraints
 
 - **Language**: The UI MUST be exclusively in Brazilian Portuguese (PT-BR).
@@ -194,8 +198,9 @@ across all priority tiers.
 
 - **SC-001**: Any team member can identify the highest-priority unspecified
   feature and begin writing its spec within 5 minutes of reading the roadmap.
-- **SC-002**: The roadmap covers 100% of the features needed to deliver a
-  usable family budget tracker (no missing core functionality).
+- **SC-002**: The roadmap lists at least one P1 feature covering each of the
+  five core budget-tracker capabilities: authentication, expense recording,
+  categorization, budgeting, and payment tracking.
 - **SC-003**: Every feature entry is understandable to a non-technical
   stakeholder without requiring supplementary explanation.
 - **SC-004**: The roadmap remains accurate — within one working day of any

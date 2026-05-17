@@ -7,7 +7,7 @@
 ## Summary
 
 Establish and maintain a living product roadmap for the family budget tracker.
-This planning artifact defines the full product scope, 12 product features across
+This planning artifact defines the full product scope, 13 product features across
 3 priority tiers, the domain entity model, and the key design decisions governing
 the entire application. No application code is produced by this spec — it guides
 all downstream feature specifications.
@@ -37,8 +37,8 @@ to specify within 5 minutes of reading the roadmap
 - Credit card double-counting prevention rule must be enforced across all
   cash-outflow calculations
 
-**Scale/Scope**: Single-household family budget tracker; 12 product features
-(P1: 6 core, P2: 3 important, P3: 3 extended)
+**Scale/Scope**: Single-household family budget tracker; 13 product features
+(P1: 7 core, P2: 3 important, P3: 3 extended)
 
 ## Constitution Check
 
