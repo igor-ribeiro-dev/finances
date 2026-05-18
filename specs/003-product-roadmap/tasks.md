@@ -94,7 +94,7 @@
 - [x] T022 [P] Mark any remaining open checklist items in specs/003-product-roadmap/checklists/roadmap.md and calculations.md as either resolved, deferred-to-feature, or outstanding with the owning feature number
 - [x] T023 Run a final terminology consistency check across spec.md and data-model.md — confirm "fatura", "Bill", "BillPayment", "CreditCard", "CREDIT_CARD", "cash-outflow", "budget total" are used with consistent capitalisation and meaning throughout
 - [x] T024 [P] Verify specs/003-product-roadmap/research.md contains entries for all 22+ decisions (Decisions 1–22 already present; add any from T004–T007)
-- [ ] T025 Open a PR from branch `003-product-roadmap` to `main` with a description referencing the roadmap spec, data model, and all resolved checklist items — PR description MUST include a one-line Constitution Check confirming no applicable principles are violated (required by constitution Governance §Development Workflow) ⚠️ BLOCKED: no git remote configured; run `git remote add origin <url>` then `git push -u origin 003-product-roadmap` before creating the PR
+- [x] T025 Open a PR from branch `003-product-roadmap` to `main` with a description referencing the roadmap spec, data model, and all resolved checklist items — PR description MUST include a one-line Constitution Check confirming no applicable principles are violated (required by constitution Governance §Development Workflow) → https://github.com/igor-ribeiro-dev/finances/pull/1
 
 ---
 
