@@ -16,7 +16,7 @@ familyGroupRouter.post('/', authMiddleware, async (req: Request, res: Response) 
     return;
   }
   try {
-    const group = await createGroupUseCase(req.userId, name.trim());
+    const group = await createGroupUseCase(res.locals['userId'] as string, name.trim());
     res.status(201).json(group);
   } catch (err) {
     if (err instanceof AppError)
@@ -32,7 +32,7 @@ familyGroupRouter.post('/join', authMiddleware, async (req: Request, res: Respon
     return;
   }
   try {
-    const group = await joinGroupUseCase(req.userId, code);
+    const group = await joinGroupUseCase(res.locals['userId'] as string, code);
     res.json(group);
   } catch (err) {
     if (err instanceof AppError) {
@@ -46,7 +46,7 @@ familyGroupRouter.post(
   authMiddleware,
   async (req: Request, res: Response) => {
     try {
-      const result = await regenerateInviteUseCase(req.userId);
+      const result = await regenerateInviteUseCase(res.locals['userId'] as string);
       res.json(result);
     } catch (err) {
       if (err instanceof AppError) sendError(res, 403, err.code, err.message);
@@ -57,7 +57,7 @@ familyGroupRouter.post(
 
 familyGroupRouter.delete('/members/me', authMiddleware, async (req: Request, res: Response) => {
   try {
-    await leaveGroupUseCase(req.userId);
+    await leaveGroupUseCase(res.locals['userId'] as string);
     res.sendStatus(204);
   } catch (err) {
     if (err instanceof AppError) sendError(res, 403, err.code, err.message);

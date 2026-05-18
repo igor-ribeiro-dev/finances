@@ -73,7 +73,7 @@ authRouter.post('/logout', authMiddleware, async (req: Request, res: Response) =
 
 authRouter.get('/me', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const user = await getMeUseCase(req.userId);
+    const user = await getMeUseCase(res.locals['userId'] as string);
     res.json(user);
   } catch (err) {
     if (err instanceof AppError) sendError(res, 401, err.code, err.message);

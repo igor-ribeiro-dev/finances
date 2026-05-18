@@ -44,7 +44,7 @@ describe('POST /api/v1/auth/register', () => {
     });
     mockSession.create.mockResolvedValue({ id: 'sess-1' });
 
-    const res = await request(app)
+    const res = await request(app as Parameters<typeof request>[0])
       .post('/api/v1/auth/register')
       .send({ name: 'Ana', email: 'ana@test.com', password: 'Senha123' });
 
@@ -58,7 +58,7 @@ describe('POST /api/v1/auth/register', () => {
 
   it('returns 409 when email already in use', async () => {
     mockUser.findUnique.mockResolvedValue({ id: 'existing' });
-    const res = await request(app)
+    const res = await request(app as Parameters<typeof request>[0])
       .post('/api/v1/auth/register')
       .send({ name: 'Ana', email: 'ana@test.com', password: 'Senha123' });
     expect(res.status).toBe(409);
@@ -69,7 +69,7 @@ describe('POST /api/v1/auth/register', () => {
 describe('POST /api/v1/auth/login', () => {
   it('returns 401 for invalid credentials', async () => {
     mockUser.findUnique.mockResolvedValue(null);
-    const res = await request(app)
+    const res = await request(app as Parameters<typeof request>[0])
       .post('/api/v1/auth/login')
       .send({ email: 'x@x.com', password: 'wrong' });
     expect(res.status).toBe(401);

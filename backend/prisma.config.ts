@@ -1,13 +1,13 @@
 import { defineConfig } from 'prisma/config';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { config } from 'dotenv';
+import { join } from 'path';
+
+// Load .env from backend/ directory regardless of CWD
+config({ path: join(__dirname, '.env') });
 
 export default defineConfig({
-  schema: './prisma/schema.prisma',
-  migrate: {
-    async adapter(env) {
-      const { Pool } = await import('pg');
-      const pool = new Pool({ connectionString: env['DATABASE_URL'] as string });
-      return new PrismaPg(pool);
-    },
+  schema: join(__dirname, 'prisma/schema.prisma'),
+  datasource: {
+    url: process.env['DATABASE_URL'],
   },
 });

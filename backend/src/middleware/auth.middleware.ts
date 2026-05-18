@@ -22,6 +22,6 @@ export async function authMiddleware(
   const thirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   await prisma.session.update({ where: { id: sessionId }, data: { expiresAt: thirtyDays } });
 
-  req.userId = session.userId;
+  res.locals['userId'] = session.userId;
   next();
 }

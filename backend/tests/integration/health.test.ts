@@ -7,7 +7,7 @@ const app = createApp();
 
 describe('GET /health', () => {
   it('returns 200 with correct shape matching contracts/health.yaml', async () => {
-    const res = await request(app).get('/health');
+    const res = await request(app as Parameters<typeof request>[0]).get('/health');
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       status: 'ok',
@@ -18,7 +18,7 @@ describe('GET /health', () => {
   });
 
   it('returns JSON content-type', async () => {
-    const res = await request(app).get('/health');
+    const res = await request(app as Parameters<typeof request>[0]).get('/health');
     expect(res.headers['content-type']).toMatch(/application\/json/);
   });
 });

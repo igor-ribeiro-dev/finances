@@ -1,3 +1,7 @@
+import { config } from 'dotenv';
+import { join } from 'path';
+config({ path: join(__dirname, '../.env') });
+
 import { validateEnv } from './env';
 import { createApp } from './app';
 
