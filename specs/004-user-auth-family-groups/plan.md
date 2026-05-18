@@ -28,7 +28,7 @@ Implementar cadastro, login, logout e recuperação de senha de usuários, além
 
 **Constraints**:
 - Senhas armazenadas exclusivamente como hash bcrypt (custo 12)
-- Sessões armazenadas em banco; cookie `httpOnly`, `SameSite=Lax`
+- Sessões armazenadas em banco; cookie `httpOnly`, `SameSite=Lax`, `Secure` ativado apenas em produção (`NODE_ENV === 'production'`)
 - Tokens de reset com TTL 1 hora; um convite ativo por grupo
 - Interface exclusivamente em PT-BR
 

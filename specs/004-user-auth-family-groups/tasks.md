@@ -35,7 +35,7 @@
 **⚠️ CRÍTICO**: Nenhuma user story pode começar até esta fase estar completa
 
 - [ ] T006 Criar `backend/prisma/schema.prisma` com os modelos: `User`, `FamilyGroup`, `Invite`, `Session`, `PasswordResetToken` — conforme `data-model.md` (campos, tipos, constraints, relações e índices)
-- [ ] T007 Executar migração inicial: `npx prisma migrate dev --name init_auth_family_groups -w backend` — gera `backend/prisma/migrations/`
+- [ ] T007 Executar migração inicial: `cd backend && npx prisma migrate dev --name init_auth_family_groups` — gera `backend/prisma/migrations/`
 - [ ] T008 [P] Criar singleton Prisma client em `backend/src/infra/prisma.ts` (exporta instância única de `PrismaClient`)
 - [ ] T009 [P] Criar serviço de e-mail em `backend/src/infra/email.ts` (Nodemailer com SMTP via env vars; exporta `sendPasswordResetEmail(to, token)`)
 - [ ] T010 [P] Criar helper de erros padronizados em `backend/src/api/errors.ts` (classe `AppError` com `code: string` e `message: string`; função `sendError(res, status, code, message)`)
@@ -71,7 +71,7 @@
 - [ ] T024 [US1] Implementar `backend/src/application/auth/login.use-case.ts`: busca usuário por email; compara senha com `bcrypt.compare`; cria nova `Session`; retorna usuário + sessionId (erro genérico `INVALID_CREDENTIALS` se qualquer validação falhar)
 - [ ] T025 [US1] Implementar `backend/src/application/auth/logout.use-case.ts`: deleta `Session` pelo `sessionId` do cookie
 - [ ] T026 [US1] Implementar `backend/src/application/auth/get-me.use-case.ts`: busca `User` via `req.userId` (injetado pelo auth middleware); retorna `{ id, name, email, familyGroupId }`
-- [ ] T027 [US1] Implementar `backend/src/api/auth/auth.router.ts` com os handlers: `POST /register`, `POST /login` (define cookie `session_id` httpOnly SameSite=Lax MaxAge=2592000), `POST /logout` (limpa cookie), `GET /me` (requer auth middleware)
+- [ ] T027 [US1] Implementar `backend/src/api/auth/auth.router.ts` com os handlers: `POST /register`, `POST /login` (define cookie `session_id` com `httpOnly: true`, `sameSite: 'lax'`, `maxAge: 2592000`, `secure: process.env.NODE_ENV === 'production'`), `POST /logout` (limpa cookie), `GET /me` (requer auth middleware)
 - [ ] T028 [P] [US1] Implementar `frontend/src/components/auth/PasswordInput.tsx`: input de senha com toggle show/hide e lista de regras inline (comprimento ✓/✗, número ✓/✗, maiúscula ✓/✗) atualizadas a cada keystroke
 - [ ] T029 [P] [US1] Implementar `frontend/src/components/auth/RegisterForm.tsx`: campos nome, e-mail, senha (usa `PasswordInput`); submissão chama `AuthContext.register`; exibe erro de API (ex.: `EMAIL_ALREADY_IN_USE`)
 - [ ] T030 [P] [US1] Implementar `frontend/src/components/auth/LoginForm.tsx`: campos e-mail e senha; submissão chama `AuthContext.login`; exibe `INVALID_CREDENTIALS` como mensagem genérica
@@ -93,6 +93,7 @@
 - [ ] T033 [P] [US2] Escrever testes unitários falhando para create-group use-case em `backend/tests/unit/family-group/create-group.test.ts`: usuário já em grupo → `ALREADY_IN_GROUP`; sucesso → grupo criado, convite de 8 chars gerado, `User.familyGroupId` atualizado
 - [ ] T034 [P] [US2] Escrever testes de integração falhando para `POST /groups` em `backend/tests/integration/family-group/create-group.test.ts` (verifica resposta com `invite.code`, `invite.expiresAt`)
 - [ ] T035 [P] [US2] Escrever testes unitários falhando para `OnboardingPage` em `frontend/tests/unit/pages/OnboardingPage.test.tsx`: renderiza opções "Criar grupo" e "Entrar com código"; formulário de criação valida nome não vazio
+- [ ] T035b [P] [US2] Escrever testes unitários falhando para regenerate-invite use-case em `backend/tests/unit/family-group/regenerate-invite.test.ts`: usuário sem grupo → erro `FORBIDDEN`; sucesso → convite anterior deletado e novo convite de 8 chars gerado; testar integração via `POST /groups/invite/regenerate` retornando `{ code, link, expiresAt }`
 
 ### Implementação — US2
 

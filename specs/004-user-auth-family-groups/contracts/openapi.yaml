@@ -15,7 +15,7 @@ components:
       type: apiKey
       in: cookie
       name: session_id
-      description: Token de sessão opaco, httpOnly, validade 30 dias com renovação automática.
+      description: Token de sessão opaco, httpOnly, SameSite=Lax, Secure (apenas em produção), validade 30 dias com renovação automática.
 
   schemas:
     Error:
@@ -111,7 +111,7 @@ paths:
             Set-Cookie:
               schema:
                 type: string
-                example: "session_id=<token>; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax"
+                example: "session_id=<token>; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax; Secure (apenas em produção)"
           content:
             application/json:
               schema:
