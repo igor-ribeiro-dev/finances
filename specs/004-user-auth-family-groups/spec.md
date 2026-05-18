@@ -82,6 +82,8 @@ Um usuário que esqueceu sua senha solicita a redefinição informando o e-mail 
 - O que ocorre se o link de convite é acessado por um usuário que ainda não tem conta? O sistema deve permitir o cadastro e a entrada no grupo em sequência.
 - O que acontece se o usuário tenta fazer login enquanto já possui uma sessão ativa em outro dispositivo? A nova sessão é criada normalmente; sessões simultâneas são permitidas.
 - O que ocorre se um membro sai do grupo? Ele perde o acesso imediatamente; seus dados históricos permanecem no grupo.
+- O que acontece quando o último membro sai do grupo? O grupo persiste sem membros e sem ação automática — nenhum dado é deletado ou arquivado. O grupo pode ser re-habitado se um novo convite for gerado por alguém que entre futuramente (fora do escopo desta feature).
+- O que o usuário vê quando a sessão expira com o app aberto? O frontend detecta o erro 401 retornado pela API e redireciona silenciosamente para `/login` exibindo a mensagem: "Sua sessão expirou. Faça login novamente."
 
 ## Requirements *(mandatory)*
 
@@ -91,16 +93,18 @@ Um usuário que esqueceu sua senha solicita a redefinição informando o e-mail 
 - **FR-002**: O sistema DEVE validar que o e-mail informado no cadastro é único — não pode existir outra conta com o mesmo e-mail.
 - **FR-003**: O sistema DEVE permitir que usuários cadastrados façam login com e-mail e senha.
 - **FR-004**: O sistema DEVE permitir que usuários façam logout a qualquer momento.
-- **FR-005**: O sistema DEVE permitir que usuários solicitem redefinição de senha via e-mail, recebendo um link temporário para criar uma nova senha.
+- **FR-005**: O sistema DEVE permitir que usuários solicitem redefinição de senha via e-mail, recebendo um link temporário para criar uma nova senha. Ao concluir a redefinição, todas as sessões ativas do usuário em outros dispositivos DEVEM ser invalidadas imediatamente; apenas a sessão do dispositivo que realizou o reset permanece ativa.
 - **FR-006**: O sistema DEVE permitir que um usuário autenticado, que ainda não pertença a nenhum grupo, crie um grupo familiar informando um nome.
 - **FR-007**: Ao criar um grupo, o sistema DEVE gerar automaticamente um link e um código curto de convite únicos para aquele grupo.
 - **FR-008**: O sistema DEVE permitir que um usuário autenticado entre em um grupo familiar utilizando um link ou código de convite válido.
-- **FR-009**: Todos os membros de um grupo familiar DEVEM ter acesso igual — qualquer membro pode visualizar e editar todas as despesas e orçamentos do grupo.
+- **FR-009**: Todos os membros de um grupo familiar DEVEM ter acesso igual ao grupo — qualquer membro pode visualizar os dados do grupo e registrar ou editar itens pertencentes ao grupo. O escopo completo de dados compartilhados (despesas, orçamentos, categorias) é definido nas features subsequentes (005+).
 - **FR-010**: Um usuário DEVE pertencer a no máximo um grupo familiar por vez.
 - **FR-011**: O sistema DEVE permitir que um membro saia do grupo a qualquer momento; ao sair, perde o acesso imediatamente.
 - **FR-012**: Cada grupo possui no máximo 1 convite ativo por vez. O convite expira após 7 dias sem uso. Qualquer membro pode regenerar um novo convite; ao fazer isso, o convite anterior é invalidado imediatamente.
 - **FR-013**: Um usuário autenticado que não pertence a nenhum grupo DEVE ser redirecionado para uma tela de onboarding obrigatória; nenhuma outra tela do app é acessível até que ele crie ou entre em um grupo.
-- **FR-014**: As sessões DEVEM ter validade de 30 dias, renovando automaticamente a cada uso do app; uma sessão inativa por 30 dias consecutivos é encerrada e o usuário deve fazer login novamente.
+- **FR-014**: As sessões DEVEM ter validade de 30 dias. A validade é renovada automaticamente a cada request autenticado bem-sucedido (qualquer endpoint). Uma sessão sem nenhum request autenticado por 30 dias consecutivos é encerrada e o usuário deve fazer login novamente.
+- **FR-015**: Quando qualquer request autenticado retornar HTTP 401 (sessão expirada ou inválida), o frontend DEVE redirecionar o usuário para `/login` e exibir a mensagem: "Sua sessão expirou. Faça login novamente."
+- **FR-016**: O cookie de sessão DEVE ter a flag `Secure` ativada em ambiente de produção (HTTPS) e desativada em ambiente de desenvolvimento (HTTP), garantindo que o cookie nunca seja transmitido em texto claro em produção.
 
 ### Key Entities
 
@@ -116,7 +120,7 @@ Um usuário que esqueceu sua senha solicita a redefinição informando o e-mail 
 - **SC-001**: Um novo usuário consegue criar uma conta e fazer login em menos de 2 minutos.
 - **SC-002**: O criador de um grupo consegue compartilhar um convite e um novo membro consegue entrar no grupo em menos de 3 minutos.
 - **SC-003**: 95% dos novos usuários completam o cadastro com sucesso na primeira tentativa.
-- **SC-004**: Um membro que entra no grupo tem acesso imediato (sem configuração adicional) a todas as despesas e orçamentos do grupo.
+- **SC-004**: Um membro que entra no grupo tem acesso imediato (sem configuração adicional) ao grupo familiar — `familyGroupId` é preenchido no momento do ingresso e todas as telas protegidas tornam-se acessíveis.
 - **SC-005**: O sistema impede que um usuário pertença a mais de um grupo simultaneamente em 100% das tentativas.
 
 ## Clarifications
@@ -128,6 +132,17 @@ Um usuário que esqueceu sua senha solicita a redefinição informando o e-mail 
 - Q: Quais são os requisitos mínimos para uma senha ser aceita? → A: Mínimo 8 caracteres + pelo menos 1 número + 1 letra maiúscula.
 - Q: O sistema deve limitar ou bloquear tentativas de login após erros consecutivos? → A: Sem limite — o usuário pode tentar indefinidamente; não há bloqueio de conta ou CAPTCHA.
 - Q: Ao gerar um novo convite para o grupo, o convite anterior é invalidado? → A: Apenas 1 convite ativo por vez — regenerar invalida o anterior imediatamente.
+
+### Session 2026-05-17 (segunda rodada — gaps do checklist)
+
+- Q: Ao redefinir a senha com sucesso, as outras sessões ativas do usuário (outros dispositivos) são invalidadas? → A: Sim — todas as outras sessões são invalidadas imediatamente; apenas a sessão do dispositivo que realizou o reset permanece ativa.
+- Q: O que acontece com um grupo familiar que fica com zero membros? → A: O grupo persiste sem membros — nenhuma ação automática; todos os dados históricos são preservados.
+- Q: O que define "um uso" que aciona a renovação da sessão? → A: Qualquer request autenticado bem-sucedido — o middleware de auth renova `expiresAt` a cada request.
+- Q: O que acontece na interface quando a sessão expira durante o uso do app? → A: Redireciona silenciosamente para `/login` com a mensagem "Sua sessão expirou. Faça login novamente."
+
+### Session 2026-05-17 (quarta rodada — gaps do speckit-analyze)
+
+- Q: O cookie de sessão deve ter a flag `Secure` em produção? → A: Sim, condicionalmente — `Secure` ativado apenas em produção (`NODE_ENV === 'production'`); desativado em desenvolvimento local para permitir HTTP.
 
 ## Assumptions
 
