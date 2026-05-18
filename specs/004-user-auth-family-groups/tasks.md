@@ -6,7 +6,7 @@
 
 **Tests**: Obrigatórios — TDD mandatório pela Constitution. Todo teste DEVE ser escrito e estar FALHANDO antes da implementação correspondente.
 
-**Stack**: Node.js 20 + TypeScript 5, Express 4, Prisma 5, bcrypt, nodemailer, cookie-parser (backend) | React 18, React Router v6 (frontend)
+**Stack**: Node.js 20 + TypeScript 5, Express 4, Prisma 7, `@prisma/adapter-pg`, `pg`, bcrypt, nodemailer, cookie-parser, cors, dotenv (backend) | React 18, React Router v6, `@testing-library/jest-dom` (frontend)
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -20,8 +20,8 @@
 
 **Purpose**: Instalar dependências e criar estrutura de diretórios do feature
 
-- [x] T001 Instalar dependências do backend: `npm install prisma @prisma/client bcrypt nodemailer cookie-parser -w backend` e devDeps: `npm install -D @types/bcrypt @types/nodemailer @types/cookie-parser prisma -w backend`
-- [x] T002 [P] Instalar dependências do frontend: `npm install react-router-dom -w frontend` e `npm install -D @types/react-router-dom -w frontend`
+- [x] T001 Instalar dependências do backend: `npm install @prisma/client @prisma/adapter-pg pg bcrypt nodemailer cookie-parser cors dotenv --workspace=@finances/backend` e devDeps: `npm install -D @types/bcrypt @types/nodemailer @types/cookie-parser @types/cors @types/pg prisma --workspace=@finances/backend`
+- [x] T002 [P] Instalar dependências do frontend: `npm install react-router-dom --workspace=@finances/frontend` e `npm install -D @types/react-router-dom @testing-library/jest-dom --workspace=@finances/frontend`
 - [x] T003 [P] Criar estrutura de diretórios do backend: `backend/prisma/migrations/`, `backend/src/domain/user/`, `backend/src/domain/family-group/`, `backend/src/domain/invite/`, `backend/src/application/auth/`, `backend/src/application/family-group/`, `backend/src/api/auth/`, `backend/src/api/family-group/`, `backend/src/middleware/`, `backend/src/infra/`, `backend/tests/unit/auth/`, `backend/tests/unit/family-group/`, `backend/tests/integration/auth/`, `backend/tests/integration/family-group/`
 - [x] T004 [P] Criar estrutura de diretórios do frontend: `frontend/src/pages/`, `frontend/src/components/auth/`, `frontend/src/services/`, `frontend/src/contexts/`, `frontend/src/router/`, `frontend/tests/unit/pages/`, `frontend/tests/unit/components/`
 - [x] T005 Atualizar `backend/.env.example` com as variáveis: `SESSION_COOKIE_DOMAIN`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `FRONTEND_URL`
@@ -34,13 +34,13 @@
 
 **⚠️ CRÍTICO**: Nenhuma user story pode começar até esta fase estar completa
 
-- [x] T000Criar `backend/prisma/schema.prisma` com os modelos: `User`, `FamilyGroup`, `Invite`, `Session`, `PasswordResetToken` — conforme `data-model.md` (campos, tipos, constraints, relações e índices)
-- [x] T000Executar migração inicial: `cd backend && npx prisma migrate dev --name init_auth_family_groups` — gera `backend/prisma/migrations/`
-- [x] T000[P] Criar singleton Prisma client em `backend/src/infra/prisma.ts` (exporta instância única de `PrismaClient`)
-- [x] T000[P] Criar serviço de e-mail em `backend/src/infra/email.ts` (Nodemailer com SMTP via env vars; exporta `sendPasswordResetEmail(to, token)`)
+- [x] T006 Criar `backend/prisma/schema.prisma` com os modelos: `User`, `FamilyGroup`, `Invite`, `Session`, `PasswordResetToken` — datasource sem `url` (Prisma 7: URL vai em prisma.config.ts)
+- [x] T007 Criar `backend/prisma.config.ts` com `datasource.url` carregado via dotenv de `backend/.env` (Prisma 7 exige config separada — URL não vai mais no schema.prisma); executar migração: `cd backend && npx prisma migrate dev --name init_auth_family_groups`
+- [x] T008 [P] Criar singleton Prisma client em `backend/src/infra/prisma.ts` usando `PrismaPg` adapter (Prisma 7 com driver adapter para PostgreSQL)
+- [x] T009 [P] Criar serviço de e-mail em `backend/src/infra/email.ts` (Nodemailer com SMTP via env vars; exporta `sendPasswordResetEmail(to, token)`)
 - [x] T010 [P] Criar helper de erros padronizados em `backend/src/api/errors.ts` (classe `AppError` com `code: string` e `message: string`; função `sendError(res, status, code, message)`)
-- [x] T011 Implementar middleware de autenticação em `backend/src/middleware/auth.middleware.ts` (lê cookie `session_id`, valida em banco, renova `expiresAt = now() + 30d`, injeta `req.userId`; retorna 401 com `UNAUTHORIZED` se inválido/expirado)
-- [x] T012 Atualizar `backend/src/app.ts` para: montar routers sob `/api/v1/auth` e `/api/v1/groups`; adicionar `cookie-parser`; configurar CORS para `FRONTEND_URL`
+- [x] T011 Implementar middleware de autenticação em `backend/src/middleware/auth.middleware.ts` (lê cookie `session_id`, valida em banco, renova `expiresAt = now() + 30d`, injeta `res.locals['userId']`; retorna 401 se inválido/expirado) — nota: usar `res.locals` em vez de `req.userId` para evitar conflito de tipos com ts-node
+- [x] T012 Atualizar `backend/src/app.ts`: montar routers, adicionar `cookie-parser`, configurar CORS via pacote `cors` (não middleware manual — evita conflito de tipos TypeScript)
 - [x] T013 [P] Criar `frontend/src/services/auth.service.ts` com funções base: `register`, `login`, `logout`, `getMe` (fetch com credentials; intercepta 401 e emite evento `session:expired`)
 - [x] T014 [P] Criar `frontend/src/contexts/AuthContext.tsx` com estado `{ user, loading }` e ações `{ register, login, logout }` (carrega `getMe` na inicialização)
 - [x] T015 Criar `frontend/src/router/ProtectedRoute.tsx` (verifica `AuthContext`: se loading → spinner; se não autenticado → `/login`; se autenticado sem grupo → `/onboarding`; se autenticado com grupo → renderiza children)

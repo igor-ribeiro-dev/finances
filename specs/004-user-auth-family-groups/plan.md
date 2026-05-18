@@ -13,8 +13,8 @@ Implementar cadastro, login, logout e recuperação de senha de usuários, além
 **Language/Version**: Node.js 20 LTS + TypeScript 5 (strict mode)
 
 **Primary Dependencies**:
-- Backend: Express 4, Prisma 5 (ORM + Migrate), bcrypt, nodemailer, cookie-parser
-- Frontend: React 18, React Router v6
+- Backend: Express 4, Prisma 7 (ORM + Migrate), `@prisma/adapter-pg`, `pg`, bcrypt, nodemailer, cookie-parser, cors, dotenv
+- Frontend: React 18, React Router v6, `@testing-library/jest-dom`
 
 **Storage**: PostgreSQL 15 — tabelas: `User`, `FamilyGroup`, `Invite`, `Session`, `PasswordResetToken`
 
@@ -68,9 +68,10 @@ specs/004-user-auth-family-groups/
 ```text
 backend/
 ├── prisma/
-│   ├── schema.prisma                    ← User, FamilyGroup, Invite, Session, PasswordResetToken
+│   ├── schema.prisma                    ← User, FamilyGroup, Invite, Session, PasswordResetToken (sem url no datasource — Prisma 7)
 │   └── migrations/
-│       └── 001_auth_family_groups/
+│       └── 20260518013158_init_auth_family_groups/
+├── prisma.config.ts                     ← Configuração do Prisma 7: datasource.url + dotenv
 ├── src/
 │   ├── domain/
 │   │   ├── user/
@@ -149,7 +150,7 @@ Todas as decisões foram tomadas com base na stack existente do projeto e nos re
 - bcrypt custo 12 para hashing de senhas
 - Nodemailer + SMTP para e-mails de recuperação de senha
 - Código de convite: 8 chars alfanuméricos maiúsculos
-- Prisma como ORM + Prisma Migrate para schema
+- Prisma 7 como ORM + Prisma Migrate para schema (com `prisma.config.ts` para configuração de datasource e adaptador `@prisma/adapter-pg`)
 - React Router v6 + `ProtectedRoute` para roteamento protegido
 - React Context para estado de autenticação no frontend
 
@@ -189,7 +190,7 @@ Ver [contracts/openapi.yaml](contracts/openapi.yaml) para o contrato completo.
 | POST | /api/v1/groups/invite/regenerate | Sim |
 | DELETE | /api/v1/groups/members/me | Sim |
 
-**Autenticação**: Cookie `session_id` (httpOnly, SameSite=Lax). Middleware `auth.middleware.ts` valida o token em banco e renova `expiresAt` a cada request.
+**Autenticação**: Cookie `session_id` (httpOnly, SameSite=Lax, Secure em produção). Middleware `auth.middleware.ts` valida o token em banco, renova `expiresAt` a cada request, e injeta `userId` via `res.locals['userId']` (não via `req.userId`, pois o augmentation de tipo do Express conflita com ts-node).
 
 ### Maintenance Process
 
