@@ -1,0 +1,456 @@
+openapi: "3.1.0"
+info:
+  title: Finances API — Auth & Family Groups
+  version: "1.0.0"
+  description: >
+    Endpoints de autenticação (cadastro, login, logout, recuperação de senha)
+    e gerenciamento de grupos familiares (criar, entrar, sair, regenerar convite).
+
+servers:
+  - url: /api/v1
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_id
+      description: Token de sessão opaco, httpOnly, validade 30 dias com renovação automática.
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: "EMAIL_ALREADY_IN_USE"
+        message:
+          type: string
+          example: "Este e-mail já está cadastrado."
+
+    UserMe:
+      type: object
+      required: [id, name, email, familyGroupId]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Maria Silva"
+        email:
+          type: string
+          format: email
+          example: "maria@exemplo.com"
+        familyGroupId:
+          type: string
+          format: uuid
+          nullable: true
+          description: "null quando o usuário não pertence a nenhum grupo."
+
+    FamilyGroup:
+      type: object
+      required: [id, name, invite]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Família Silva"
+        invite:
+          type: object
+          nullable: true
+          required: [code, link, expiresAt]
+          properties:
+            code:
+              type: string
+              example: "XKCD4723"
+            link:
+              type: string
+              example: "https://app.exemplo.com/join/XKCD4723"
+            expiresAt:
+              type: string
+              format: date-time
+
+paths:
+
+  # ── Autenticação ─────────────────────────────────────────────────────────────
+
+  /auth/register:
+    post:
+      summary: Criar conta
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  example: "Maria Silva"
+                email:
+                  type: string
+                  format: email
+                  example: "maria@exemplo.com"
+                password:
+                  type: string
+                  minLength: 8
+                  description: "Mínimo 8 caracteres, pelo menos 1 número e 1 letra maiúscula."
+                  example: "Senha123"
+      responses:
+        "201":
+          description: Conta criada. Cookie de sessão definido.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "session_id=<token>; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMe"
+        "400":
+          description: Dados inválidos (senha fraca, e-mail malformado, campos ausentes).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: "INVALID_PASSWORD"
+                message: "A senha deve ter pelo menos 8 caracteres, 1 número e 1 letra maiúscula."
+        "409":
+          description: E-mail já cadastrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: "EMAIL_ALREADY_IN_USE"
+                message: "Este e-mail já está cadastrado."
+
+  /auth/login:
+    post:
+      summary: Fazer login
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login bem-sucedido. Cookie de sessão definido.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMe"
+        "401":
+          description: Credenciais inválidas.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: "INVALID_CREDENTIALS"
+                message: "E-mail ou senha incorretos."
+
+  /auth/logout:
+    post:
+      summary: Fazer logout
+      operationId: logout
+      security:
+        - sessionCookie: []
+      responses:
+        "204":
+          description: Sessão encerrada. Cookie removido.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "session_id=; HttpOnly; Path=/; Max-Age=0"
+        "401":
+          description: Não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/me:
+    get:
+      summary: Obter dados do usuário autenticado
+      operationId: getMe
+      security:
+        - sessionCookie: []
+      description: >
+        Chamado pelo frontend na inicialização do app para restaurar o estado de autenticação.
+        Também renova a sessão (atualiza expiresAt).
+      responses:
+        "200":
+          description: Dados do usuário atual.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMe"
+        "401":
+          description: Não autenticado ou sessão expirada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/forgot-password:
+    post:
+      summary: Solicitar redefinição de senha
+      operationId: forgotPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        "200":
+          description: >
+            Sempre retorna 200 (mesmo que o e-mail não exista) para não revelar
+            quais endereços estão cadastrados.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Se este e-mail estiver cadastrado, você receberá as instruções em breve."
+
+  /auth/reset-password:
+    post:
+      summary: Redefinir senha com token
+      operationId: resetPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token:
+                  type: string
+                  description: Token recebido por e-mail (64 bytes hex).
+                newPassword:
+                  type: string
+                  minLength: 8
+                  description: "Mínimo 8 caracteres, pelo menos 1 número e 1 letra maiúscula."
+      responses:
+        "200":
+          description: Senha redefinida com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Senha redefinida com sucesso."
+        "400":
+          description: Token inválido, expirado ou já utilizado; ou nova senha não atende aos requisitos.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: "INVALID_RESET_TOKEN"
+                message: "Este link de redefinição é inválido ou já expirou."
+
+  # ── Grupos Familiares ─────────────────────────────────────────────────────────
+
+  /groups:
+    post:
+      summary: Criar grupo familiar
+      operationId: createGroup
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  example: "Família Silva"
+      responses:
+        "201":
+          description: Grupo criado. Convite gerado automaticamente.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyGroup"
+        "400":
+          description: Nome inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Usuário já pertence a um grupo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: "ALREADY_IN_GROUP"
+                message: "Você já pertence a um grupo familiar."
+        "401":
+          description: Não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /groups/join:
+    post:
+      summary: Entrar em grupo via código de convite
+      operationId: joinGroup
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                  example: "XKCD4723"
+      responses:
+        "200":
+          description: Usuário entrou no grupo com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyGroup"
+        "400":
+          description: Código inválido ou expirado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: "INVALID_INVITE_CODE"
+                message: "Código de convite inválido ou expirado."
+        "409":
+          description: Usuário já pertence a um grupo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: "ALREADY_IN_GROUP"
+                message: "Você já pertence a um grupo familiar."
+        "401":
+          description: Não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /groups/invite/regenerate:
+    post:
+      summary: Regenerar convite do grupo
+      operationId: regenerateInvite
+      security:
+        - sessionCookie: []
+      description: >
+        Invalida o convite anterior e gera um novo. Disponível para qualquer membro do grupo.
+      responses:
+        "200":
+          description: Novo convite gerado.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [invite]
+                properties:
+                  invite:
+                    type: object
+                    required: [code, link, expiresAt]
+                    properties:
+                      code:
+                        type: string
+                        example: "MNBV9876"
+                      link:
+                        type: string
+                        example: "https://app.exemplo.com/join/MNBV9876"
+                      expiresAt:
+                        type: string
+                        format: date-time
+        "403":
+          description: Usuário não pertence a nenhum grupo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /groups/members/me:
+    delete:
+      summary: Sair do grupo familiar
+      operationId: leaveGroup
+      security:
+        - sessionCookie: []
+      description: >
+        Remove o usuário do grupo imediatamente. Dados históricos do usuário
+        (despesas registradas) permanecem no grupo.
+      responses:
+        "204":
+          description: Usuário removido do grupo.
+        "403":
+          description: Usuário não pertence a nenhum grupo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
