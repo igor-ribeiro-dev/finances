@@ -14,8 +14,9 @@ const MOCK_USER: UserMe = {
   familyGroupId: 'mock-group-1',
 };
 
+declare const __MOCK_AUTH__: boolean;
 function isMock() {
-  return import.meta.env.VITE_MOCK_AUTH === 'true';
+  return typeof __MOCK_AUTH__ !== 'undefined' && __MOCK_AUTH__;
 }
 
 function sessionExpiredEvent() {

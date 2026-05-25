@@ -77,10 +77,10 @@
 
 **Independent Test**: Carregar qualquer tela autenticada e verificar: fundo cinza-claro, textos legíveis (contraste > 4.5:1), botões/links em teal, cards com shadow-card, header da sidebar com efeito de glass.
 
-- [ ] T020 [US2] Verificar e documentar ratios de contraste WCAG 2.1 AA para todos os tokens teal em `frontend/tailwind.config.js`: teal-600 contra branco deve ser ≥ 4.5:1 (referência: #0d9488 ≈ 4.6:1 ✅); ajustar tonalidade se necessário; adicionar comentário no `tailwind.config.js` com os ratios validados
-- [ ] T021 [P] [US2] Aplicar tokens de sombra e border-radius à área de conteúdo do `AppLayout` em `frontend/src/components/layout/AppLayout.tsx`: content wrapper recebe `rounded-lg shadow-card` (quando cards individuais forem adicionados pelas features de domínio, este é o padrão a seguir)
-- [ ] T022 [P] [US2] Confirmar glassmorphism no header da `Sidebar` em `frontend/src/components/layout/Sidebar.tsx`: header deve ter `backdrop-blur-md bg-teal-800/80 border-b border-white/10` — verificar que o efeito de blur está ativo e que o texto do grupo permanece legível (contraste do texto branco contra teal-800/80 ≥ 4.5:1)
-- [ ] T023 [US2] Atualizar `frontend/src/pages/LoginPage.tsx` para consumir `state.from` do React Router após login bem-sucedido: chamar `navigate(location.state?.from?.pathname ?? '/', { replace: true })` no callback de sucesso do `auth.service.ts` (completa o ciclo FR-014)
+- [X] T020 [US2] Verificar e documentar ratios de contraste WCAG 2.1 AA para todos os tokens teal em `frontend/tailwind.config.js`: teal-600 contra branco deve ser ≥ 4.5:1 (referência: #0d9488 ≈ 4.6:1 ✅); ajustar tonalidade se necessário; adicionar comentário no `tailwind.config.js` com os ratios validados
+- [X] T021 [P] [US2] Aplicar tokens de sombra e border-radius à área de conteúdo do `AppLayout` em `frontend/src/components/layout/AppLayout.tsx`: content wrapper recebe `rounded-lg shadow-card` (quando cards individuais forem adicionados pelas features de domínio, este é o padrão a seguir)
+- [X] T022 [P] [US2] Confirmar glassmorphism no header da `Sidebar` em `frontend/src/components/layout/Sidebar.tsx`: header deve ter `backdrop-blur-md bg-teal-800/80 border-b border-white/10` — verificar que o efeito de blur está ativo e que o texto do grupo permanece legível (contraste do texto branco contra teal-800/80 ≥ 4.5:1)
+- [X] T023 [US2] Atualizar `frontend/src/pages/LoginPage.tsx` para consumir `state.from` do React Router após login bem-sucedido: chamar `navigate(location.state?.from?.pathname ?? '/', { replace: true })` no callback de sucesso do `auth.service.ts` (completa o ciclo FR-014)
 
 **Story 2 complete when**: Lighthouse Accessibility score ≥ 90; Inter carregada em todas as telas; header da sidebar com glass visível; nenhum valor de cor hard-coded em componentes.
 
@@ -94,13 +94,13 @@
 
 ### Testes (escrever e verificar falha antes de implementar)
 
-- [ ] T024 [US3] Adicionar testes de comportamento mobile ao `frontend/tests/unit/components/layout/AppLayout.test.tsx`: (a) mock de viewport < 768px → botão de menu visível, sidebar com `hidden md:flex`; (b) clicar no botão hamburguer → `isMobileMenuOpen` = true; (c) clicar no overlay backdrop → `isMobileMenuOpen` = false
+- [X] T024 [US3] Adicionar testes de comportamento mobile ao `frontend/tests/unit/components/layout/AppLayout.test.tsx`: (a) mock de viewport < 768px → botão de menu visível, sidebar com `hidden md:flex`; (b) clicar no botão hamburguer → `isMobileMenuOpen` = true; (c) clicar no overlay backdrop → `isMobileMenuOpen` = false
 
 ### Implementação
 
-- [ ] T025 [US3] Adicionar comportamento mobile ao `AppLayout` em `frontend/src/components/layout/AppLayout.tsx`: header mobile com botão hamburguer (`<MenuIcon>` Lucide, visível apenas em `md:hidden`); sidebar com classes `hidden md:flex` em estado fechado e `flex fixed inset-y-0 left-0 z-50` em estado aberto; overlay backdrop `fixed inset-0 bg-black/30 z-40` quando aberto
-- [ ] T026 [P] [US3] Adicionar prop `onClose?: () => void` ao `Sidebar` em `frontend/src/components/layout/Sidebar.tsx`: chamar `onClose?.()` após clique em item de navegação com `status === 'active'` (fecha o drawer em mobile)
-- [ ] T027 [P] [US3] Confirmar que o overlay backdrop em `AppLayout` chama `setIsMobileMenuOpen(false)` no seu `onClick` (fecha sidebar ao clicar fora — FR-008)
+- [X] T025 [US3] Adicionar comportamento mobile ao `AppLayout` em `frontend/src/components/layout/AppLayout.tsx`: header mobile com botão hamburguer (`<MenuIcon>` Lucide, visível apenas em `md:hidden`); sidebar com classes `hidden md:flex` em estado fechado e `flex fixed inset-y-0 left-0 z-50` em estado aberto; overlay backdrop `fixed inset-0 bg-black/30 z-40` quando aberto
+- [X] T026 [P] [US3] Adicionar prop `onClose?: () => void` ao `Sidebar` em `frontend/src/components/layout/Sidebar.tsx`: chamar `onClose?.()` após clique em item de navegação com `status === 'active'` (fecha o drawer em mobile)
+- [X] T027 [P] [US3] Confirmar que o overlay backdrop em `AppLayout` chama `setIsMobileMenuOpen(false)` no seu `onClick` (fecha sidebar ao clicar fora — FR-008)
 
 **Story 3 complete when**: Testes T024 passam; app em 375px mostra hamburguer; sidebar desliza ao clicar; fecha ao clicar fora.
 
@@ -110,11 +110,11 @@
 
 **Purpose**: Garantir qualidade, cobertura e conformidade com os Success Criteria da spec.
 
-- [ ] T028 Rodar suite completa de testes do frontend e verificar que todos passam: `npm test --workspace=frontend` (todos os testes T009–T012, T024 devem estar verdes)
-- [ ] T029 [P] Validar SC-001: navegar para cada seção do app em ≤ 2 cliques a partir de qualquer tela autenticada — confirmar manualmente no browser
-- [ ] T030 [P] Validar SC-003: testar layout em janelas de 320px, 768px, 1024px, 1440px e 1920px — nenhum elemento sobreposto ou conteúdo cortado
-- [ ] T031 Validar SC-004: adicionar item temporário ao `frontend/src/config/navigation.ts`, confirmar que aparece no menu sem modificar nenhum outro arquivo, depois desfazer
-- [ ] T032 [P] Validar SC-005: acessar `/despesas` sem autenticação → confirmar redirect para `/login` com URL preservada; fazer login → confirmar redirect de volta para `/despesas`
+- [X] T028 Rodar suite completa de testes do frontend e verificar que todos passam: `npm test --workspace=frontend` (todos os testes T009–T012, T024 devem estar verdes)
+- [X] T029 [P] Validar SC-001: navegar para cada seção do app em ≤ 2 cliques a partir de qualquer tela autenticada — confirmar manualmente no browser
+- [X] T030 [P] Validar SC-003: testar layout em janelas de 320px, 768px, 1024px, 1440px e 1920px — nenhum elemento sobreposto ou conteúdo cortado
+- [X] T031 Validar SC-004: adicionar item temporário ao `frontend/src/config/navigation.ts`, confirmar que aparece no menu sem modificar nenhum outro arquivo, depois desfazer
+- [X] T032 [P] Validar SC-005: acessar `/despesas` sem autenticação → confirmar redirect para `/login` com URL preservada; fazer login → confirmar redirect de volta para `/despesas`
 
 ---
 

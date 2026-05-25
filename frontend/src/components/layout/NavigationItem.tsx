@@ -4,9 +4,10 @@ import type { NavItem } from '../../config/navigation';
 interface Props {
   item: NavItem;
   isActive: boolean;
+  onNavigate?: () => void;
 }
 
-export function NavigationItem({ item, isActive }: Props) {
+export function NavigationItem({ item, isActive, onNavigate }: Props) {
   const { label, path, icon: Icon, status } = item;
 
   if (status === 'coming-soon') {
@@ -36,6 +37,7 @@ export function NavigationItem({ item, isActive }: Props) {
         to={path}
         aria-current={isActive ? 'page' : undefined}
         className={`flex items-center gap-3 px-3 py-2 ${isActive ? activeClasses : defaultClasses}`}
+        onClick={onNavigate}
       >
         <Icon size={18} aria-hidden="true" />
         <span>{label}</span>

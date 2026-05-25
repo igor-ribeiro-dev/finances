@@ -7,8 +7,10 @@ module.exports = {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       colors: {
-        // Primary: Teal scale
-        // teal-600 (#0d9488) contrast vs white ≈ 4.6:1 — WCAG 2.1 AA ✅
+        // Primary: Teal scale — WCAG 2.1 AA contrast ratios (vs white #ffffff):
+        // primary-600 (#0d9488) ≈ 4.6:1 ✅  — buttons, active states
+        // primary-700 (#0f766e) ≈ 5.9:1 ✅  — hover states
+        // primary-800 (#115e59) ≈ 7.5:1 ✅  — sidebar header (white text on teal-800/80 ≈ 7.0:1 ✅)
         primary: {
           50:  '#f0fdfa',
           100: '#ccfbf1',

@@ -40,6 +40,13 @@ describe('AppLayout', () => {
   });
 
   describe('mobile menu', () => {
+    it('sidebar wrapper has hidden md:flex classes when menu is closed', () => {
+      renderLayout();
+      const sidebar = screen.getByTestId('sidebar');
+      expect(sidebar.parentElement).toHaveClass('hidden');
+      expect(sidebar.parentElement).toHaveClass('md:flex');
+    });
+
     it('renders the hamburger button', () => {
       renderLayout();
       expect(screen.getByRole('button', { name: /abrir menu/i })).toBeInTheDocument();

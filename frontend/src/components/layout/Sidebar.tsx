@@ -28,7 +28,12 @@ export function Sidebar({ onClose }: Props) {
       <nav className="flex-1 overflow-y-auto py-2">
         <ul role="list">
           {NAV_ITEMS.map((item) => (
-            <NavigationItem key={item.id} item={item} isActive={location.pathname === item.path} />
+            <NavigationItem
+              key={item.id}
+              item={item}
+              isActive={location.pathname === item.path}
+              onNavigate={item.status === 'active' ? onClose : undefined}
+            />
           ))}
         </ul>
       </nav>

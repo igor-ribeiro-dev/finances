@@ -30,7 +30,9 @@ export function AppLayout({ children }: Props) {
           </button>
         </header>
 
-        <main className="flex-1 overflow-auto bg-gray-50">{children}</main>
+        <main className="flex-1 overflow-auto bg-gray-50 p-4">
+          <div className="rounded-lg shadow-card bg-white min-h-full">{children}</div>
+        </main>
       </div>
     </div>
   );
