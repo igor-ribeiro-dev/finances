@@ -7,6 +7,18 @@ export interface UserMe {
   familyGroupId: string | null;
 }
 
+const MOCK_USER: UserMe = {
+  id: 'mock-1',
+  name: 'Igor Ribeiro',
+  email: 'igor@example.com',
+  familyGroupId: 'mock-group-1',
+};
+
+declare const __MOCK_AUTH__: boolean;
+function isMock() {
+  return typeof __MOCK_AUTH__ !== 'undefined' && __MOCK_AUTH__;
+}
+
 function sessionExpiredEvent() {
   window.dispatchEvent(new Event('session:expired'));
 }
@@ -31,17 +43,24 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const authService = {
   register: (name: string, email: string, password: string) =>
-    request<UserMe>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ name, email, password }),
-    }),
+    isMock()
+      ? Promise.resolve({ ...MOCK_USER, name })
+      : request<UserMe>('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({ name, email, password }),
+        }),
 
-  login: (email: string, password: string) =>
-    request<UserMe>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  login: (_email: string, _password: string) =>
+    isMock()
+      ? Promise.resolve(MOCK_USER)
+      : request<UserMe>('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email: _email, password: _password }),
+        }),
 
-  logout: () => request<void>('/auth/logout', { method: 'POST' }),
+  logout: () => (isMock() ? Promise.resolve() : request<void>('/auth/logout', { method: 'POST' })),
 
-  getMe: () => request<UserMe>('/auth/me'),
+  getMe: () => (isMock() ? Promise.resolve(MOCK_USER) : request<UserMe>('/auth/me')),
 
   forgotPassword: (email: string) =>
     request<{ message: string }>('/auth/forgot-password', {

@@ -1,19 +1,25 @@
 import { useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { LoginForm } from '../components/auth/LoginForm';
 import { useAuth } from '../contexts/AuthContext';
 
 export function LoginPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [params] = useSearchParams();
   const expired = params.get('expired') === '1';
 
   useEffect(() => {
     if (!loading && user) {
-      navigate(user.familyGroupId ? '/' : '/onboarding', { replace: true });
+      if (!user.familyGroupId) {
+        navigate('/onboarding', { replace: true });
+      } else {
+        const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/';
+        navigate(from, { replace: true });
+      }
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, location]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">

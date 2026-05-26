@@ -2,11 +2,13 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from '../contexts/AuthContext';
 import { ProtectedRoute } from './ProtectedRoute';
+import { AppLayout } from '../components/layout/AppLayout';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { OnboardingPage } from '../pages/OnboardingPage';
+import { DashboardPage } from '../pages/DashboardPage';
 
 function SessionExpiredHandler() {
   const navigate = useNavigate();
@@ -25,10 +27,6 @@ function SessionExpiredHandler() {
   return null;
 }
 
-function DashboardPlaceholder() {
-  return <div className="p-8 text-gray-700">Dashboard — em breve (feature 008)</div>;
-}
-
 export function AppRouter() {
   return (
     <BrowserRouter>
@@ -45,7 +43,59 @@ export function AppRouter() {
             path="/"
             element={
               <ProtectedRoute>
-                <DashboardPlaceholder />
+                <AppLayout>
+                  <DashboardPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/despesas"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <div className="p-8 text-gray-500">Em breve</div>
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/categorias"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <div className="p-8 text-gray-500">Em breve</div>
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orcamentos"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <div className="p-8 text-gray-500">Em breve</div>
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pagamentos"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <div className="p-8 text-gray-500">Em breve</div>
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cartoes"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <div className="p-8 text-gray-500">Em breve</div>
+                </AppLayout>
               </ProtectedRoute>
             }
           />

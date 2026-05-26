@@ -13,6 +13,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    define: {
+      __MOCK_AUTH__: env.VITE_MOCK_AUTH === 'true',
+    },
     server: {
       port: parseInt(env.VITE_PORT || '5173', 10),
       proxy: {

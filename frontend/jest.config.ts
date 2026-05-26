@@ -18,6 +18,10 @@ const config: Config = {
     ],
   },
   testMatch: ['**/tests/**/*.test.tsx', '**/tests/**/*.test.ts'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  moduleNameMapper: {
+    '\\.(css)$': '<rootDir>/src/__mocks__/fileMock.js',
+  },
 };
 
 export default config;
