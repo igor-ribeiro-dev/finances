@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware';
+import { requireMembership } from '../../middleware/require-membership.middleware';
 import { createGroupUseCase } from '../../application/family-group/create-group.use-case';
 import { joinGroupUseCase } from '../../application/family-group/join-group.use-case';
 import { regenerateInviteUseCase } from '../../application/family-group/regenerate-invite.use-case';
 import { leaveGroupUseCase } from '../../application/family-group/leave-group.use-case';
 import { AppError, sendError } from '../errors';
+import { prisma } from '../../infra/prisma';
 
 export const familyGroupRouter = Router();
 
@@ -51,6 +53,25 @@ familyGroupRouter.post(
     } catch (err) {
       if (err instanceof AppError) sendError(res, 403, err.code, err.message);
       else sendError(res, 500, 'INTERNAL_ERROR', 'Erro interno.');
+    }
+  },
+);
+
+familyGroupRouter.get(
+  '/members',
+  authMiddleware,
+  requireMembership,
+  async (_req: Request, res: Response) => {
+    try {
+      const groupId = res.locals['groupId'] as string;
+      const members = await prisma.user.findMany({
+        where: { familyGroupId: groupId },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      });
+      res.json(members);
+    } catch {
+      sendError(res, 500, 'INTERNAL_ERROR', 'Erro interno.');
     }
   },
 );

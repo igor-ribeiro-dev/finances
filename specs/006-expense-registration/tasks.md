@@ -25,9 +25,9 @@ description: "Task list for feature 006 — Registro de Despesas"
 
 **Purpose**: Adicionar as duas tabelas novas (`Expense`, `IdempotencyKey`) e o enum `PaymentMethod` ao Prisma, gerar e aplicar a migration.
 
-- [ ] T001 Adicionar enum `PaymentMethod`, model `Expense` (com `createdById` + `updatedById`), model `IdempotencyKey` e back-relations `expensesAuthored`/`expensesEdited`/`expensesOwned`/`idempotencyKeys` em `User` e `expenses` em `FamilyGroup` no arquivo `backend/prisma/schema.prisma`, conforme `specs/006-expense-registration/data-model.md §2`
-- [ ] T002 Gerar e aplicar migration via `cd backend && npx prisma migrate dev --name 006_expense_registration`; verificar SQL gerado em `backend/prisma/migrations/<timestamp>_006_expense_registration/migration.sql` (enum criado, FKs `RESTRICT` para `User`/`FamilyGroup`, FKs `CASCADE` em `IdempotencyKey`, índices `expense_group_date_id_idx` + `idempotency_user_idx` + `idempotency_created_at_idx`)
-- [ ] T003 Regenerar Prisma client via `cd backend && npx prisma generate` e confirmar que `PrismaClient` expõe os novos modelos sem erro de tipo
+- [X] T001 Adicionar enum `PaymentMethod`, model `Expense` (com `createdById` + `updatedById`), model `IdempotencyKey` e back-relations `expensesAuthored`/`expensesEdited`/`expensesOwned`/`idempotencyKeys` em `User` e `expenses` em `FamilyGroup` no arquivo `backend/prisma/schema.prisma`, conforme `specs/006-expense-registration/data-model.md §2` (nota: `@db.Uuid` removido para compatibilidade com IDs `text` herdados de 004)
+- [X] T002 Gerar e aplicar migration via `cd backend && npx prisma migrate dev --name 006_expense_registration`; verificar SQL gerado em `backend/prisma/migrations/20260526223957_006_expense_registration/migration.sql`
+- [X] T003 Regenerar Prisma client via `cd backend && npx prisma generate` e confirmar que `PrismaClient` expõe os novos modelos sem erro de tipo
 
 **Checkpoint**: Schema do banco pronto. Fase 2 pode começar.
 
@@ -41,27 +41,27 @@ description: "Task list for feature 006 — Registro de Despesas"
 
 ### Backend — helpers, middleware, validators, router shell
 
-- [ ] T004 [P] Estender `backend/src/api/errors.ts`: adicionar parâmetro opcional `fieldErrors?: Array<{ field: string; code: string; message: string }>` a `sendError(res, status, code, message, fieldErrors?)` e criar helper `sendValidationError(res, fieldErrors)` que retorna 400 com `code: 'validation_error'`, `message: 'Dados inválidos.'` — formato definido em FR-010 e em `specs/006-expense-registration/contracts/openapi.yaml#/components/responses/ValidationError`
-- [ ] T005 [P] Criar `backend/src/middleware/require-membership.middleware.ts`: middleware que, após `authMiddleware`, consulta `User.familyGroupId` do `res.locals.userId`; se nulo → `sendError(res, 403, 'no_group', 'Você precisa pertencer a um grupo familiar para acessar despesas.')`; caso contrário injeta `res.locals.groupId` e chama `next()`
-- [ ] T006 [P] Criar `backend/src/api/expense/expense.validators.ts` com Zod schemas: `createExpenseBody` (amountCents, date, description, paymentMethod, ownerMemberId), `updateExpenseBody` (mesmo schema — full-body), `listExpensesQuery` (limit z.coerce.number().int().min(1).max(50).default(50); cursor z.string().optional()); incluir helper `zodErrorToFieldErrors(error: z.ZodError): FieldError[]` que mapeia `error.issues` para o array do envelope FR-010
-- [ ] T007 [P] Criar `backend/src/domain/expense/expense.repository.ts`: importa `prisma` de `infra/prisma`; exporta objeto `expenseRepository` com assinaturas vazias para `create`, `findById`, `findByIdInGroup`, `listByGroupWithCursor`, `update`, `delete` (corpos `throw new Error('Not implemented')` por enquanto — implementação por US)
-- [ ] T008 [P] Criar `backend/src/domain/expense/idempotency.repository.ts`: exporta `idempotencyRepository` com `findByKey(key)` e `save({ key, userId, expenseId })`; usar Prisma transaction no `save` aceita opcionalmente parâmetro `tx?: Prisma.TransactionClient` para uso dentro da transação de criação de Expense
-- [ ] T009 Criar `backend/src/api/expense/expense.router.ts`: cria `expenseRouter = Router()`; aplica `authMiddleware` e o novo `requireMembership` a todas as rotas; declara as 5 rotas (`POST '/'`, `GET '/'`, `GET '/:id'`, `PATCH '/:id'`, `DELETE '/:id'`) com handlers stub que retornam `res.status(501).json({ error: { code: 'not_implemented', message: 'Em implementação.' } })`; depende de T004, T005, T006
-- [ ] T010 Montar o router em `backend/src/app.ts`: importar `expenseRouter` e adicionar `app.use('/api/v1/expenses', expenseRouter)` na ordem correta (após outros routers e antes do error handler); depende de T009
+- [X] T004 [P] Estender `backend/src/api/errors.ts`: adicionou `fieldErrors?` opcional ao `sendError` e novo helper `sendValidationError`.
+- [X] T005 [P] Criado `backend/src/middleware/require-membership.middleware.ts`: consulta `User.familyGroupId`; 403 `no_group` quando nulo; injeta `res.locals.groupId`.
+- [X] T006 [P] Criado `backend/src/api/expense/expense.validators.ts` com `createExpenseBody`, `updateExpenseBody`, `listExpensesQuery`, `idempotencyKeyHeader` e helper `zodErrorToFieldErrors`. Zod instalado (`zod@^4.4.3`).
+- [X] T007 [P] Criado `backend/src/domain/expense/expense.repository.ts` com implementação completa (não só skeleton — para economizar idas e voltas): `create`, `findById`, `findByIdInGroup`, `listByGroupWithCursor`, `update`, `delete`, todos com `include: { ownerMember }`.
+- [X] T008 [P] Criado `backend/src/domain/expense/idempotency.repository.ts`: `findByKey`, `save({key, userId, expenseId}, tx?)`.
+- [X] T009 Criado `backend/src/api/expense/expense.router.ts`: router com `authMiddleware + requireMembership` aplicados; 5 rotas em 501 stub.
+- [X] T010 Montado `app.use('/api/v1/expenses', expenseRouter)` em `backend/src/app.ts`.
 
 ### Backend — endpoint compartilhado para listar membros do grupo
 
-- [ ] T011 [P] Contract test `backend/tests/api/family-group/list-members.contract.test.ts` (Supertest) para o novo `GET /api/v1/groups/members`: 200 retorna array `[{ id, name }]` dos membros ativos do grupo do usuário autenticado (incluindo o próprio); 401 sem cookie; 403 se usuário sem grupo
-- [ ] T012 Implementar `familyGroupRouter.get('/members', authMiddleware, requireMembership, ...)` em `backend/src/api/family-group/family-group.router.ts`: query `User WHERE familyGroupId = res.locals.groupId` retornando `id, name`; depende de T005 e T011
+- [X] T011 [P] Contract test `backend/tests/api/family-group/list-members.contract.test.ts` — 200 com members ordenados, 401, 403 sem grupo.
+- [X] T012 Implementado `GET /api/v1/groups/members` em `family-group.router.ts` — query `findMany WHERE familyGroupId`, `select { id, name }`, `orderBy { name }`.
 
 ### Frontend — types, service shell, navegação, página shell
 
-- [ ] T013 Criar `frontend/src/types/expense.ts`: exportar `PaymentMethod` (`'CASH_OR_DEBIT' | 'CREDIT_CARD'`), `Expense`, `CreateExpenseBody`, `UpdateExpenseBody`, `ExpensePage`, `FieldError`, `ServiceError` (discriminated union: `validation | not_found | conflict | network | server` conforme `research.md §12`); espelhar `contracts/openapi.yaml`
-- [ ] T014 [P] Criar `frontend/src/services/expense.service.ts` skeleton: define `BASE = '/api/v1/expenses'`; cria helper `request<T>(input, init)` que faz `fetch` com `credentials: 'include'` e parse de erro convertendo HTTP status + envelope `{ error }` no `ServiceError` correto; exporta objeto `expenseService` com métodos stub que lançam `Error('Not implemented')`; depende de T013
-- [ ] T015 [P] Criar `frontend/src/services/group.service.ts` (se não existir) ou estender existente: exportar `listGroupMembers(): Promise<Array<{ id: string; name: string }>>` que chama `GET /api/v1/groups/members`; depende de T013
-- [ ] T016 [P] Atualizar `frontend/src/config/navigation.ts`: localizar o item `dashboard`/`expenses` (id `despesas`) na lista `NAV_ITEMS` e mudar `status: 'coming-soon'` → `status: 'active'`, garantir `path: '/despesas'`
-- [ ] T017 Criar `frontend/src/pages/ExpensesPage.tsx` skeleton: componente funcional, sem dados ainda; renderiza `<h1>Despesas</h1>` + estado vazio com texto "Você ainda não registrou nenhuma despesa" e botão "+ Nova despesa" (sem handler ainda); depende de T013
-- [ ] T018 Adicionar rota `/despesas` em `frontend/src/router/AppRouter.tsx`: importar `ExpensesPage` e registrá-la dentro do bloco de rotas protegidas (após o `<ProtectedRoute>`); depende de T017
+- [X] T013 Criado `frontend/src/types/expense.ts` com tipos, `ServiceError` discriminated union etc.
+- [X] T014 Criado `frontend/src/services/expense.service.ts` com `request<T>` mapeando o envelope flat para `ServiceError`. Implementação completa dos 5 métodos (createExpense, listExpenses, getExpense, updateExpense, deleteExpense).
+- [X] T015 Criado `frontend/src/services/group.service.ts` com `listGroupMembers()`.
+- [X] T016 `navigation.ts`: item `despesas` agora `status: 'active'`.
+- [X] T017 Criado `frontend/src/pages/ExpensesPage.tsx` (com integração antecipada de US1 — modal, hook, toast).
+- [X] T018 Rota `/despesas` em `AppRouter.tsx` aponta para `<ExpensesPage />`.
 
 **Checkpoint**: Tudo pronto para implementar as user stories. Rotas e shells em pé; nenhum endpoint funcional ainda (501).
 
@@ -94,9 +94,9 @@ description: "Task list for feature 006 — Registro de Despesas"
 #### Backend
 
 - [ ] T027 [US1] Implementar `backend/src/application/expense/create-expense.use-case.ts`: assinatura `createExpense({ userId, groupId, idempotencyKey?, body })`; (1) se `idempotencyKey` presente, consulta `idempotencyRepository.findByKey`; se encontrado e `userId` bate → retorna `{ status: 'replay', expense: <existente> }`; se encontrado e `userId` diverge → lança `AppError('idempotency_key_conflict', ...)`; (2) valida regra `ownerMemberId` pertence ao `groupId` (consulta `prisma.user.findUnique({ where: { id, familyGroupId: groupId } })`); se não → `AppError('owner_not_in_group', ...)` com `field: 'ownerMemberId'`; (3) abre `prisma.$transaction([create Expense com createdById=userId e updatedById=userId, save IdempotencyKey se chave presente])`; (4) retorna `{ status: 'created', expense }`
-- [ ] T028 [US1] Implementar `create` e `findById` em `backend/src/domain/expense/expense.repository.ts`: `create(tx, data)` aceita transaction client opcional; retorna a Expense criada; `findById(id)` query simples por PK
+- [ ] T028 [US1] Implementar `create` e `findById` em `backend/src/domain/expense/expense.repository.ts`: `create(tx, data)` aceita transaction client opcional; retorna a Expense criada com `include: { ownerMember: { select: { id: true, name: true, familyGroupId: true } } }` (necessário para o handler derivar `isExMember` ao serializar — ver T030/T047/T068); `findById(id)` idem `include`
 - [ ] T029 [US1] Implementar `findByKey(key)` e `save({ key, userId, expenseId }, tx?)` em `backend/src/domain/expense/idempotency.repository.ts`
-- [ ] T030 [US1] Wire handler do `POST /api/v1/expenses` em `backend/src/api/expense/expense.router.ts`: extrair `Idempotency-Key` do header (validar `z.string().uuid().optional()`), validar `req.body` com `createExpenseBody.safeParse`; em falha de validação → `sendValidationError(res, zodErrorToFieldErrors(error))`; chamar use case com `{ userId: res.locals.userId, groupId: res.locals.groupId, idempotencyKey, body }`; mapear retorno: `replay` → 200, `created` → 201, `AppError('idempotency_key_conflict')` → 409, `AppError('owner_not_in_group')` → 400 com `fieldErrors`; depende de T027/T028/T029 e T006/T009
+- [ ] T030 [US1] Wire handler do `POST /api/v1/expenses` em `backend/src/api/expense/expense.router.ts`: extrair `Idempotency-Key` do header (validar `z.string().uuid().optional()`), validar `req.body` com `createExpenseBody.safeParse`; em falha de validação → `sendValidationError(res, zodErrorToFieldErrors(error))`; chamar use case com `{ userId: res.locals.userId, groupId: res.locals.groupId, idempotencyKey, body }`; serializar a Expense de retorno para a forma do contrato (`ownerMember: { id, name, isExMember: ownerMember.familyGroupId !== groupId }`, sem expor `familyGroupId`) — extrair em helper `mapExpenseToResponse(expense, groupId)` reutilizável por T047 e T068; mapear status: `replay` → 200, `created` → 201, `AppError('idempotency_key_conflict')` → 409, `AppError('owner_not_in_group')` → 400 com `fieldErrors`; depende de T027/T028/T029 e T006/T009
 
 #### Frontend
 
@@ -128,7 +128,7 @@ description: "Task list for feature 006 — Registro de Despesas"
 
 #### Frontend tests
 
-- [ ] T041 [P] [US2] Component test `frontend/tests/unit/components/expense/ExpenseListItem.test.tsx`: renderiza data formatada em PT-BR (`25/05/2026`); valor formatado `R$ 123,45`; nome do responsável; label do método; indicador "ex-membro" (badge "ex-membro" ou itálico) quando `ownerMember.familyGroupId !== expense.groupId` (mockar Expense com flag derivada)
+- [ ] T041 [P] [US2] Component test `frontend/tests/unit/components/expense/ExpenseListItem.test.tsx`: renderiza data formatada em PT-BR (`25/05/2026`); valor formatado `R$ 123,45`; nome do responsável (`ownerMember.name`); label do método; indicador "ex-membro" (badge "ex-membro" ou itálico) quando `ownerMember.isExMember === true` (mockar Expense com a flag derivada conforme schema `Expense.ownerMember` no OpenAPI)
 - [ ] T042 [P] [US2] Component test `frontend/tests/unit/components/expense/ExpenseList.test.tsx`: empty state com CTA "Registrar primeira despesa"; renderiza array de itens; `IntersectionObserver` mock chama `onLoadMore` quando sentinela aproxima do fim; skeleton placeholder visível enquanto `isInitialLoading`
 - [ ] T043 [P] [US2] Hook test `frontend/tests/unit/hooks/useExpensesList.test.ts`: primeira página carrega no mount (mock `expenseService.listExpenses`); `loadMore()` busca próxima página usando `nextCursor` retornado; `appendItem(expense)` (chamado pelo `onOptimistic` do useCreateExpense) prepende ao array local sem refetch; `replaceItem(id, expense)` (chamado por `onSuccess`) troca tempId pelo real; cobre `removeItem(id)` para uso futuro
 
@@ -138,8 +138,8 @@ description: "Task list for feature 006 — Registro de Despesas"
 
 - [ ] T044 [US2] Criar `backend/src/application/expense/cursor.ts`: exporta `encodeCursor({ date: string; id: string }): string` (base64url) e `decodeCursor(token: string): { date: string; id: string } | null` (retorna null se malformado, com validação de formato `date` e `uuid`)
 - [ ] T045 [US2] Implementar `backend/src/application/expense/list-expenses.use-case.ts`: assinatura `listExpenses({ groupId, limit, cursor? })`; se `cursor`, decode; chama `expenseRepository.listByGroupWithCursor(groupId, limit + 1, decoded)`; se retornou `limit + 1` itens, descarta o último e usa `encodeCursor(items[limit-1])` como `nextCursor`; caso contrário `nextCursor: null`
-- [ ] T046 [US2] Implementar `listByGroupWithCursor(groupId, limit, cursor?)` em `backend/src/domain/expense/expense.repository.ts`: query Prisma com `where: { groupId, OR: cursor ? [{ date: { lt: cursor.date } }, { date: cursor.date, id: { lt: cursor.id } }] : undefined }`, `orderBy: [{ date: 'desc' }, { id: 'desc' }]`, `take: limit`, `include: { ownerMember: { select: { id, name, familyGroupId } } }` (familyGroupId usado pelo frontend para detectar ex-membro)
-- [ ] T047 [US2] Wire handler do `GET /api/v1/expenses` em `backend/src/api/expense/expense.router.ts`: validar query com `listExpensesQuery.safeParse(req.query)`; chamar use case com `{ groupId: res.locals.groupId, limit, cursor }`; retornar `{ items, nextCursor }` mapeando cada Expense para inclu ir `ownerMember.isExMember = ownerMember.familyGroupId !== groupId` (frontend-friendly); 200
+- [ ] T046 [US2] Implementar `listByGroupWithCursor(groupId, limit, cursor?)` em `backend/src/domain/expense/expense.repository.ts`: query Prisma com `where: { groupId, OR: cursor ? [{ date: { lt: cursor.date } }, { date: cursor.date, id: { lt: cursor.id } }] : undefined }`, `orderBy: [{ date: 'desc' }, { id: 'desc' }]`, `take: limit`, `include: { ownerMember: { select: { id: true, name: true, familyGroupId: true } } }` (familyGroupId usado apenas internamente para derivar `isExMember` na camada de serialização)
+- [ ] T047 [US2] Wire handler do `GET /api/v1/expenses` em `backend/src/api/expense/expense.router.ts`: validar query com `listExpensesQuery.safeParse(req.query)`; chamar use case com `{ groupId: res.locals.groupId, limit, cursor }`; mapear cada Expense para a forma do contrato `Expense` (FR `ownerMember: { id, name, isExMember: ownerMember.familyGroupId !== expense.groupId }` — NÃO expor `familyGroupId` no JSON de resposta); retornar `{ items, nextCursor }` com status 200
 
 #### Frontend
 
@@ -181,12 +181,12 @@ description: "Task list for feature 006 — Registro de Despesas"
 
 #### Backend
 
-- [ ] T063 [US3] Implementar `findByIdInGroup(id, groupId)` em `backend/src/domain/expense/expense.repository.ts`: query `findFirst({ where: { id, groupId }, include: { ownerMember: { select: { id, name, familyGroupId } } } })`
+- [ ] T063 [US3] Implementar `findByIdInGroup(id, groupId)` em `backend/src/domain/expense/expense.repository.ts`: query `findFirst({ where: { id, groupId }, include: { ownerMember: { select: { id: true, name: true, familyGroupId: true } } } })` (mesma forma de T028/T046 para reuso do helper `mapExpenseToResponse`)
 - [ ] T064 [US3] Implementar `update(id, data)` (sem `createdById`) e `delete(id)` em `expense.repository.ts`
 - [ ] T065 [US3] Implementar `backend/src/application/expense/get-expense.use-case.ts`: chama `findByIdInGroup`; se null → lança `AppError('not_found', 'Despesa não encontrada.')`
 - [ ] T066 [US3] Implementar `backend/src/application/expense/update-expense.use-case.ts`: assinatura `updateExpense({ userId, groupId, id, body })`; (1) `findByIdInGroup` (se null → AppError('not_found')); (2) valida `ownerMemberId ∈ grupo` como em create; (3) `expenseRepository.update(id, { ...body, updatedById: userId })` (NÃO modifica `createdById`); (4) retorna Expense atualizada
 - [ ] T067 [US3] Implementar `backend/src/application/expense/delete-expense.use-case.ts`: `findByIdInGroup` para verificar existência e grupo; se null → AppError('not_found'); senão `expenseRepository.delete(id)`
-- [ ] T068 [US3] Wire handlers `GET /:id`, `PATCH /:id`, `DELETE /:id` em `backend/src/api/expense/expense.router.ts`: validação Zod onde aplicável (PATCH body), mapeamento de `AppError('not_found')` → 404 envelope, `AppError('owner_not_in_group')` → 400 com fieldErrors; PATCH 200 com Expense; DELETE 204 sem body
+- [ ] T068 [US3] Wire handlers `GET /:id`, `PATCH /:id`, `DELETE /:id` em `backend/src/api/expense/expense.router.ts`: validação Zod onde aplicável (PATCH body); GET/:id e PATCH retornam a Expense serializada via `mapExpenseToResponse(expense, groupId)` definido em T030 (com `ownerMember.isExMember` derivado); mapear `AppError('not_found')` → 404 envelope, `AppError('owner_not_in_group')` → 400 com fieldErrors; PATCH 200; DELETE 204 sem body
 
 #### Frontend
 

@@ -78,7 +78,7 @@ Resolver as decisões técnicas remanescentes do `plan.md` antes de modelar dado
 
 ## 5. Validação Zod no boundary
 
-**Decision**: Schemas Zod em `backend/src/api/expense/expense.validators.ts` para 3 entradas: `createExpenseBody`, `updateExpenseBody`, `listExpensesQuery`. Conversão automática de tipo no `query` (ex.: `limit` vem como string, vira número). Erros do Zod mapeados para o envelope `{ error: { code: "validation_error", message: "Dados inválidos.", fieldErrors: [...] } }` via helper `zodErrorToAppError(err)`.
+**Decision**: Schemas Zod em `backend/src/api/expense/expense.validators.ts` para 3 entradas: `createExpenseBody`, `updateExpenseBody`, `listExpensesQuery`. Conversão automática de tipo no `query` (ex.: `limit` vem como string, vira número). Erros do Zod mapeados para o envelope flat `{ code: "validation_error", message: "Dados inválidos.", fieldErrors: [...] }` via helper `zodErrorToFieldErrors(err)` (envelope alinhado com o shape já estabelecido pela feature 004 — sem wrapper `error:`).
 
 **Rationale**:
 - Zod já está no projeto (estabelecido em 004 para auth).

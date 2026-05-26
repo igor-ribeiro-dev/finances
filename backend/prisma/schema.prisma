@@ -7,25 +7,68 @@ datasource db {
 }
 
 model User {
-  id             String               @id @default(uuid())
-  name           String               @db.VarChar(100)
-  email          String               @unique @db.VarChar(255)
-  passwordHash   String               @db.VarChar(255)
-  familyGroupId  String?
-  familyGroup    FamilyGroup?         @relation(fields: [familyGroupId], references: [id])
-  sessions       Session[]
-  resetTokens    PasswordResetToken[]
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  id               String               @id @default(uuid())
+  name             String               @db.VarChar(100)
+  email            String               @unique @db.VarChar(255)
+  passwordHash     String               @db.VarChar(255)
+  familyGroupId    String?
+  familyGroup      FamilyGroup?         @relation(fields: [familyGroupId], references: [id])
+  sessions         Session[]
+  resetTokens      PasswordResetToken[]
+  expensesAuthored Expense[]            @relation("ExpenseAuthor")
+  expensesEdited   Expense[]            @relation("ExpenseEditor")
+  expensesOwned    Expense[]            @relation("ExpenseOwner")
+  idempotencyKeys  IdempotencyKey[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 }
 
 model FamilyGroup {
-  id        String   @id @default(uuid())
-  name      String   @db.VarChar(100)
+  id        String    @id @default(uuid())
+  name      String    @db.VarChar(100)
   members   User[]
   invite    Invite?
+  expenses  Expense[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+enum PaymentMethod {
+  CASH_OR_DEBIT
+  CREDIT_CARD
+}
+
+model Expense {
+  id              String           @id @default(uuid())
+  groupId         String
+  group           FamilyGroup      @relation(fields: [groupId], references: [id])
+  amountCents     Int
+  date            DateTime         @db.Date
+  description     String           @db.VarChar(200)
+  paymentMethod   PaymentMethod
+  ownerMemberId   String
+  ownerMember     User             @relation("ExpenseOwner", fields: [ownerMemberId], references: [id])
+  createdById     String
+  createdBy       User             @relation("ExpenseAuthor", fields: [createdById], references: [id])
+  updatedById     String
+  updatedBy       User             @relation("ExpenseEditor", fields: [updatedById], references: [id])
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  idempotencyKeys IdempotencyKey[]
+
+  @@index([groupId, date(sort: Desc), id(sort: Desc)], map: "expense_group_date_id_idx")
+}
+
+model IdempotencyKey {
+  key       String   @id @db.VarChar(64)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenseId String
+  expense   Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  @@index([userId], map: "idempotency_user_idx")
+  @@index([createdAt], map: "idempotency_created_at_idx")
 }
 
 model Invite {

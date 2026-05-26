@@ -8,7 +8,7 @@ info:
     Convenções:
     - Money: sempre inteiro de centavos (`amountCents`).
     - Date: `"YYYY-MM-DD"` (data civil, sem hora, sem timezone).
-    - Erros: envelope `{ error: { code, message, fieldErrors? } }` — superset do helper `AppError` de 004.
+    - Erros: envelope flat `{ code, message, fieldErrors? }` — superset do shape `{ code, message }` já estabelecido pela feature 004; adiciona `fieldErrors` apenas para erros de validação por campo.
   version: 1.0.0
 servers:
   - url: /api/v1
@@ -20,8 +20,45 @@ security:
 tags:
   - name: Expenses
     description: CRUD de despesas registradas pelo grupo familiar do usuário autenticado.
+  - name: Groups
+    description: Endpoints de suporte sobre o grupo familiar do usuário autenticado (necessários para os formulários desta feature).
 
 paths:
+  /groups/members:
+    get:
+      tags: [Groups]
+      summary: Lista os membros ativos do grupo familiar do usuário autenticado.
+      description: |
+        Introduzido pela feature 006 para alimentar o seletor de "membro responsável" no formulário de despesa.
+        Inclui o próprio usuário autenticado.
+      responses:
+        '200':
+          description: Lista dos membros ativos do grupo.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, name]
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+              examples:
+                two_members:
+                  value:
+                    - id: 8f9a2b6e-1c4d-4e5f-9a8b-7c6d5e4f3a2b
+                      name: Ana
+                    - id: 1d2e3f4a-5b6c-7d8e-9f0a-1b2c3d4e5f6a
+                      name: Bruno
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/NoGroup'
+
   /expenses:
     post:
       tags: [Expenses]
@@ -75,9 +112,8 @@ paths:
               examples:
                 conflict:
                   value:
-                    error:
-                      code: idempotency_key_conflict
-                      message: Esta chave de idempotência já foi usada por outro usuário.
+                    code: idempotency_key_conflict
+                    message: Esta chave de idempotência já foi usada por outro usuário.
 
     get:
       tags: [Expenses]
@@ -211,6 +247,7 @@ components:
         - description
         - paymentMethod
         - ownerMemberId
+        - ownerMember
         - createdById
         - updatedById
         - createdAt
@@ -243,6 +280,21 @@ components:
           type: string
           format: uuid
           description: Membro responsável. Deve ser ativo no grupo no momento da operação. Pode tornar-se ex-membro depois (FR-018).
+        ownerMember:
+          type: object
+          description: |
+            Snapshot dos dados do membro responsável no momento da resposta. `isExMember = true` quando o usuário não pertence mais ao `groupId` da despesa (FR-018). Permite o frontend renderizar o indicador "ex-membro" sem chamada adicional.
+          required: [id, name, isExMember]
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            isExMember:
+              type: boolean
+              description: |
+                `true` se o membro foi removido do grupo desde a criação da despesa (i.e., `User.familyGroupId !== Expense.groupId`); `false` caso contrário.
         createdById:
           type: string
           format: uuid
@@ -310,33 +362,32 @@ components:
 
     ErrorEnvelope:
       type: object
-      required: [error]
+      required: [code, message]
+      description: |
+        Envelope flat de erro — superset do shape `{ code, message }` já estabelecido pela feature 004.
+        Adiciona apenas o campo opcional `fieldErrors` para erros de validação por campo (400/422).
       properties:
-        error:
-          type: object
-          required: [code, message]
-          properties:
-            code:
-              type: string
-              description: Código machine-readable (ex.: `validation_error`, `not_found`, `idempotency_key_conflict`).
-            message:
-              type: string
-              description: Mensagem humana em PT-BR.
-            fieldErrors:
-              type: array
-              description: Presente apenas em erros de validação (400/422).
-              items:
-                type: object
-                required: [field, code, message]
-                properties:
-                  field:
-                    type: string
-                    description: Nome do campo na requisição (ex.: `amountCents`).
-                  code:
-                    type: string
-                    description: Código machine-readable do erro do campo (ex.: `required`, `too_long`, `not_in_group`).
-                  message:
-                    type: string
+        code:
+          type: string
+          description: Código machine-readable (ex.: `validation_error`, `not_found`, `idempotency_key_conflict`).
+        message:
+          type: string
+          description: Mensagem humana em PT-BR.
+        fieldErrors:
+          type: array
+          description: Presente apenas em erros de validação (400/422).
+          items:
+            type: object
+            required: [field, code, message]
+            properties:
+              field:
+                type: string
+                description: Nome do campo na requisição (ex.: `amountCents`).
+              code:
+                type: string
+                description: Código machine-readable do erro do campo (ex.: `required`, `too_long`, `owner_not_in_group`).
+              message:
+                type: string
 
   responses:
     ValidationError:
@@ -348,16 +399,15 @@ components:
           examples:
             invalid_fields:
               value:
-                error:
-                  code: validation_error
-                  message: Dados inválidos.
-                  fieldErrors:
-                    - field: amountCents
-                      code: positive_required
-                      message: O valor deve ser maior que zero.
-                    - field: date
-                      code: not_in_future
-                      message: A data não pode estar no futuro.
+                code: validation_error
+                message: Dados inválidos.
+                fieldErrors:
+                  - field: amountCents
+                    code: positive_required
+                    message: O valor deve ser maior que zero.
+                  - field: date
+                    code: not_in_future
+                    message: A data não pode estar no futuro.
 
     Unauthenticated:
       description: Sessão ausente ou expirada.
@@ -368,9 +418,8 @@ components:
           examples:
             not_authenticated:
               value:
-                error:
-                  code: not_authenticated
-                  message: Sessão expirada. Faça login novamente.
+                code: not_authenticated
+                message: Sessão expirada. Faça login novamente.
 
     NoGroup:
       description: Usuário autenticado mas sem grupo familiar associado.
@@ -381,9 +430,8 @@ components:
           examples:
             no_group:
               value:
-                error:
-                  code: no_group
-                  message: Você precisa pertencer a um grupo familiar para acessar despesas.
+                code: no_group
+                message: Você precisa pertencer a um grupo familiar para acessar despesas.
 
     NotFound:
       description: Despesa não encontrada — ou não existe, ou não pertence ao seu grupo.
@@ -394,6 +442,5 @@ components:
           examples:
             not_found:
               value:
-                error:
-                  code: not_found
-                  message: Despesa não encontrada.
+                code: not_found
+                message: Despesa não encontrada.

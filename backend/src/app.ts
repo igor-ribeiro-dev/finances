@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import { healthRouter } from './routes/health';
 import { authRouter } from './api/auth/auth.router';
 import { familyGroupRouter } from './api/family-group/family-group.router';
+import { expenseRouter } from './api/expense/expense.router';
 
 export function createApp(): express.Application {
   const app = express();
@@ -20,6 +21,7 @@ export function createApp(): express.Application {
   app.use('/health', healthRouter);
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/groups', familyGroupRouter);
+  app.use('/api/v1/expenses', expenseRouter);
 
   return app;
 }

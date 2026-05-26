@@ -41,6 +41,8 @@ Registro principal: um gasto único atribuído a um membro de um grupo familiar.
 - `createdById` é sempre `res.locals.userId` em POST. PATCH ignora.
 - `updatedById` é sempre `res.locals.userId` em POST (igual ao `createdById` na criação) e em cada PATCH bem-sucedido. PATCH ignora se enviado no body.
 
+**Serialização na API**: as respostas JSON dos endpoints `GET/POST/PATCH /api/v1/expenses` DEVEM incluir, além de `ownerMemberId`, um objeto aninhado `ownerMember: { id, name, isExMember }` derivado em runtime pelo backend (`isExMember = ownerMember.familyGroupId !== expense.groupId`). O frontend usa esse campo para o indicador "ex-membro" (FR-018) sem precisar de chamada adicional. O contrato completo está em `contracts/openapi.yaml#/components/schemas/Expense`.
+
 **Por que `ON DELETE RESTRICT` em vez de `CASCADE`**:
 - `FamilyGroup` ainda não tem fluxo de deleção; se ganhar um, eliminar as despesas junto exige decisão de produto (não silenciosamente perder histórico).
 - `User`: FR-018 diz que despesas de ex-membros permanecem. Deletar o `User` físico apagaria as despesas — proibido. (Sair do grupo é setar `familyGroupId = null` no `User`, não deletar.)

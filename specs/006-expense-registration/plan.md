@@ -39,7 +39,7 @@ Entregar a primeira capacidade real de captura de dado do app: registrar, listar
 - Valor monetário sempre em centavos inteiros (`amountCents: Int` no Prisma, `number` no TS)
 - Data sempre `DATE` Postgres (sem timezone) — formato `"YYYY-MM-DD"` no JSON
 - Cookie de sessão é a única autenticação aceita; nenhum endpoint público novo
-- Toda resposta de erro segue envelope `{ error: { code, message, fieldErrors? } }` — superset do helper `AppError` existente
+- Toda resposta de erro segue envelope flat `{ code, message, fieldErrors? }` — superset do shape atual de 004 (`{ code, message }`), preserva compatibilidade
 
 **Scale/Scope**: Família com 2–10 membros, ~100–500 despesas no primeiro ano, ~5 000 no longo prazo. Cursor pagination escala horizontalmente sem mudanças.
 

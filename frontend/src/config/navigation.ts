@@ -24,7 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Despesas',
     path: '/despesas',
     icon: Receipt,
-    status: 'coming-soon',
+    status: 'active',
   },
   {
     id: 'categorias',
