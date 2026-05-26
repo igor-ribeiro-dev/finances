@@ -1,0 +1,399 @@
+openapi: 3.1.0
+info:
+  title: Finances — Expense Registration API
+  description: |
+    Contrato HTTP da feature 006 (Registro de Despesas).
+    Reusa a autenticação por cookie de sessão da feature 004 (`session_id`, httpOnly, SameSite=Lax).
+    Todas as rotas exigem que o usuário esteja autenticado E pertença a um grupo familiar.
+    Convenções:
+    - Money: sempre inteiro de centavos (`amountCents`).
+    - Date: `"YYYY-MM-DD"` (data civil, sem hora, sem timezone).
+    - Erros: envelope `{ error: { code, message, fieldErrors? } }` — superset do helper `AppError` de 004.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: API base path (prefixo estabelecido na feature 004)
+
+security:
+  - sessionCookie: []
+
+tags:
+  - name: Expenses
+    description: CRUD de despesas registradas pelo grupo familiar do usuário autenticado.
+
+paths:
+  /expenses:
+    post:
+      tags: [Expenses]
+      summary: Cria uma nova despesa para o grupo do usuário autenticado.
+      description: |
+        Idempotência: o cliente envia `Idempotency-Key: <uuid v4>` em cada tentativa de submit.
+        - Chave nova → cria e retorna 201.
+        - Chave repetida do mesmo usuário → retorna 200 com a despesa originalmente criada.
+        - Chave repetida de outro usuário → 409.
+        Ausência do header é aceita (sem dedupe).
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            format: uuid
+            maxLength: 64
+          description: UUID v4 único por tentativa de submit. Recomendado sempre.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExpenseBody'
+      responses:
+        '201':
+          description: Despesa criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '200':
+          description: Replay de `Idempotency-Key` do mesmo usuário — retorna a despesa criada originalmente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/NoGroup'
+        '409':
+          description: `Idempotency-Key` já usada por outro usuário.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                conflict:
+                  value:
+                    error:
+                      code: idempotency_key_conflict
+                      message: Esta chave de idempotência já foi usada por outro usuário.
+
+    get:
+      tags: [Expenses]
+      summary: Lista despesas do grupo com paginação por cursor (infinite scroll).
+      description: |
+        Ordenação fixa: `(date DESC, id DESC)`. Sem filtros — filtros avançados são da feature 011.
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 50
+          description: Tamanho da página (máximo e default 50).
+        - in: query
+          name: cursor
+          schema:
+            type: string
+            description: Cursor opaco em base64url retornado em `nextCursor` da página anterior.
+          required: false
+      responses:
+        '200':
+          description: Página de despesas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpensePage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/NoGroup'
+
+  /expenses/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: ID da despesa.
+
+    get:
+      tags: [Expenses]
+      summary: Retorna uma despesa específica.
+      description: |
+        Retorna **404** se a despesa não existir OU não pertencer ao grupo do usuário autenticado — sem distinção entre os dois casos (prevenção de enumeração).
+      responses:
+        '200':
+          description: Detalhe da despesa.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/NoGroup'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Expenses]
+      summary: Edita uma despesa (full-body).
+      description: |
+        Apesar do verbo `PATCH`, semântica é **full-body**: o corpo é o estado completo desejado.
+        Campos não-editáveis (`id`, `groupId`, `createdById`, `createdAt`) são ignorados silenciosamente.
+        PATCH parcial (campo ausente = "não tocar") NÃO é suportado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExpenseBody'
+      responses:
+        '200':
+          description: Despesa atualizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/NoGroup'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Expenses]
+      summary: Exclui permanentemente uma despesa.
+      description: |
+        Hard-delete — não recuperável. Retorna 204 em sucesso ou 404 se a despesa não existir / não for do grupo. O frontend trata 404 como sucesso silencioso (FR-027).
+      responses:
+        '204':
+          description: Despesa excluída.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/NoGroup'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_id
+      description: |
+        Cookie httpOnly definido pela feature 004 (auth). Validado pelo `auth.middleware.ts`.
+
+  schemas:
+    PaymentMethod:
+      type: string
+      enum: [CASH_OR_DEBIT, CREDIT_CARD]
+      description: Tipo do método de pagamento. Cartão específico fica para a feature 016.
+
+    Expense:
+      type: object
+      required:
+        - id
+        - groupId
+        - amountCents
+        - date
+        - description
+        - paymentMethod
+        - ownerMemberId
+        - createdById
+        - updatedById
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+          description: Sempre igual ao grupo do usuário autenticado (FR-019).
+        amountCents:
+          type: integer
+          minimum: 1
+          maximum: 2000000000
+          description: Valor em centavos. Ex.: 12345 = R$ 123,45.
+        date:
+          type: string
+          format: date
+          description: Data civil pura `"YYYY-MM-DD"`. Não no futuro.
+        description:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Texto livre. Trim aplicado pelo backend.
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        ownerMemberId:
+          type: string
+          format: uuid
+          description: Membro responsável. Deve ser ativo no grupo no momento da operação. Pode tornar-se ex-membro depois (FR-018).
+        createdById:
+          type: string
+          format: uuid
+          description: Autor original do registro. Write-once (FR-025).
+        updatedById:
+          type: string
+          format: uuid
+          description: |
+            Último usuário que editou o registro. Definido server-side em toda escrita (POST e PATCH).
+            Igual a `createdById` logo após a criação; muda a cada PATCH bem-sucedido (FR-028).
+            Cliente NÃO deve enviar este campo — se enviado, é ignorado silenciosamente.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateExpenseBody:
+      type: object
+      required:
+        - amountCents
+        - date
+        - description
+        - paymentMethod
+        - ownerMemberId
+      properties:
+        amountCents:
+          type: integer
+          minimum: 1
+          maximum: 2000000000
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+          minLength: 1
+          maxLength: 200
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        ownerMemberId:
+          type: string
+          format: uuid
+
+    UpdateExpenseBody:
+      allOf:
+        - $ref: '#/components/schemas/CreateExpenseBody'
+      description: |
+        Mesmos campos da criação (full-body). Campos `id`, `groupId`, `createdById`, `createdAt` enviados são ignorados.
+
+    ExpensePage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Expense'
+          maxItems: 50
+        nextCursor:
+          type: string
+          nullable: true
+          description: |
+            Cursor opaco (base64url) para a próxima página. `null` quando esta é a última página.
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Código machine-readable (ex.: `validation_error`, `not_found`, `idempotency_key_conflict`).
+            message:
+              type: string
+              description: Mensagem humana em PT-BR.
+            fieldErrors:
+              type: array
+              description: Presente apenas em erros de validação (400/422).
+              items:
+                type: object
+                required: [field, code, message]
+                properties:
+                  field:
+                    type: string
+                    description: Nome do campo na requisição (ex.: `amountCents`).
+                  code:
+                    type: string
+                    description: Código machine-readable do erro do campo (ex.: `required`, `too_long`, `not_in_group`).
+                  message:
+                    type: string
+
+  responses:
+    ValidationError:
+      description: Payload inválido — `fieldErrors` populado com uma entrada por campo.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            invalid_fields:
+              value:
+                error:
+                  code: validation_error
+                  message: Dados inválidos.
+                  fieldErrors:
+                    - field: amountCents
+                      code: positive_required
+                      message: O valor deve ser maior que zero.
+                    - field: date
+                      code: not_in_future
+                      message: A data não pode estar no futuro.
+
+    Unauthenticated:
+      description: Sessão ausente ou expirada.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            not_authenticated:
+              value:
+                error:
+                  code: not_authenticated
+                  message: Sessão expirada. Faça login novamente.
+
+    NoGroup:
+      description: Usuário autenticado mas sem grupo familiar associado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            no_group:
+              value:
+                error:
+                  code: no_group
+                  message: Você precisa pertencer a um grupo familiar para acessar despesas.
+
+    NotFound:
+      description: Despesa não encontrada — ou não existe, ou não pertence ao seu grupo.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            not_found:
+              value:
+                error:
+                  code: not_found
+                  message: Despesa não encontrada.
