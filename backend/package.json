@@ -6,7 +6,8 @@
     "dev": "ts-node src/index.ts",
     "build": "tsc --project tsconfig.json",
     "test": "jest --runInBand",
-    "lint": "eslint src/ --ext .ts --max-warnings 0"
+    "lint": "eslint src/ --ext .ts --max-warnings 0",
+    "cleanup:idempotency": "ts-node scripts/cleanup-idempotency-keys.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

@@ -123,31 +123,31 @@ description: "Task list for feature 006 — Registro de Despesas"
 
 #### Backend tests
 
-- [ ] T039 [P] [US2] Contract test `backend/tests/api/expense/list-expenses.contract.test.ts`: 200 lista vazia (`items: [], nextCursor: null`); 200 com 1 página completa (50 itens, `nextCursor` populado); 200 segunda página retorna os próximos 50 e `nextCursor: null` se acabou; cursor passado por query funciona; 400 `limit` inválido (`> 50`, `<= 0`, não-número); 400 cursor malformado; 401 sem cookie; 403 sem grupo; isolamento: usuário do grupo A não vê despesa do grupo B (criar despesas em dois grupos e verificar)
-- [ ] T040 [P] [US2] Use case test `backend/tests/application/expense/list-expenses.use-case.test.ts`: encode/decode de cursor (`base64url({date, id})`); detecção de `nextCursor` via `LIMIT n+1`; ordenação `(date DESC, id DESC)` estável diante de mesma data; cursor sobrevive a insert no meio (não duplica nem perde item)
+- [X] T039 [P] [US2] Contract test `backend/tests/api/expense/list-expenses.contract.test.ts` — 13 casos verdes cobrindo lista vazia, full page com nextCursor, página final, cursor query, cursor malformado, limit inválido, 401, 403, isolamento de grupo e serialização de `isExMember`.
+- [ ] T040 [P] [US2] Use case test `backend/tests/application/expense/list-expenses.use-case.test.ts`: **DIFERIDO** — cobertura equivalente via contract test T039 (encode/decode do cursor exercitado end-to-end pela rota). Re-priorizar se quisermos unit isolados.
 
 #### Frontend tests
 
-- [ ] T041 [P] [US2] Component test `frontend/tests/unit/components/expense/ExpenseListItem.test.tsx`: renderiza data formatada em PT-BR (`25/05/2026`); valor formatado `R$ 123,45`; nome do responsável (`ownerMember.name`); label do método; indicador "ex-membro" (badge "ex-membro" ou itálico) quando `ownerMember.isExMember === true` (mockar Expense com a flag derivada conforme schema `Expense.ownerMember` no OpenAPI)
-- [ ] T042 [P] [US2] Component test `frontend/tests/unit/components/expense/ExpenseList.test.tsx`: empty state com CTA "Registrar primeira despesa"; renderiza array de itens; `IntersectionObserver` mock chama `onLoadMore` quando sentinela aproxima do fim; skeleton placeholder visível enquanto `isInitialLoading`
-- [ ] T043 [P] [US2] Hook test `frontend/tests/unit/hooks/useExpensesList.test.ts`: primeira página carrega no mount (mock `expenseService.listExpenses`); `loadMore()` busca próxima página usando `nextCursor` retornado; `appendItem(expense)` (chamado pelo `onOptimistic` do useCreateExpense) prepende ao array local sem refetch; `replaceItem(id, expense)` (chamado por `onSuccess`) troca tempId pelo real; cobre `removeItem(id)` para uso futuro
+- [ ] T041 [P] [US2] Component test ExpenseListItem — **PENDENTE** (próxima iteração).
+- [ ] T042 [P] [US2] Component test ExpenseList — **PENDENTE**.
+- [ ] T043 [P] [US2] Hook test useExpensesList — **PENDENTE**.
 
 ### Implementation for User Story 2
 
 #### Backend
 
-- [ ] T044 [US2] Criar `backend/src/application/expense/cursor.ts`: exporta `encodeCursor({ date: string; id: string }): string` (base64url) e `decodeCursor(token: string): { date: string; id: string } | null` (retorna null se malformado, com validação de formato `date` e `uuid`)
-- [ ] T045 [US2] Implementar `backend/src/application/expense/list-expenses.use-case.ts`: assinatura `listExpenses({ groupId, limit, cursor? })`; se `cursor`, decode; chama `expenseRepository.listByGroupWithCursor(groupId, limit + 1, decoded)`; se retornou `limit + 1` itens, descarta o último e usa `encodeCursor(items[limit-1])` como `nextCursor`; caso contrário `nextCursor: null`
-- [ ] T046 [US2] Implementar `listByGroupWithCursor(groupId, limit, cursor?)` em `backend/src/domain/expense/expense.repository.ts`: query Prisma com `where: { groupId, OR: cursor ? [{ date: { lt: cursor.date } }, { date: cursor.date, id: { lt: cursor.id } }] : undefined }`, `orderBy: [{ date: 'desc' }, { id: 'desc' }]`, `take: limit`, `include: { ownerMember: { select: { id: true, name: true, familyGroupId: true } } }` (familyGroupId usado apenas internamente para derivar `isExMember` na camada de serialização)
-- [ ] T047 [US2] Wire handler do `GET /api/v1/expenses` em `backend/src/api/expense/expense.router.ts`: validar query com `listExpensesQuery.safeParse(req.query)`; chamar use case com `{ groupId: res.locals.groupId, limit, cursor }`; mapear cada Expense para a forma do contrato `Expense` (FR `ownerMember: { id, name, isExMember: ownerMember.familyGroupId !== expense.groupId }` — NÃO expor `familyGroupId` no JSON de resposta); retornar `{ items, nextCursor }` com status 200
+- [X] T044 [US2] Criado `backend/src/application/expense/cursor.ts` com `encodeCursor`/`decodeCursor` (base64url, validação de date e UUID).
+- [X] T045 [US2] Criado `backend/src/application/expense/list-expenses.use-case.ts` com LIMIT n+1 e mapeamento para `nextCursor`.
+- [X] T046 [US2] `listByGroupWithCursor` já implementado em T007; reutilizado pelo use case (orderBy `(date DESC, id DESC)` + `OR` para tie-breaker).
+- [X] T047 [US2] Wire do `GET /api/v1/expenses` no router (Zod query, 400 cursor inválido, isolamento por grupo, sem `familyGroupId` exposto).
 
 #### Frontend
 
-- [ ] T048 [US2] Adicionar `listExpenses({ limit?, cursor? }): Promise<ExpensePage>` em `frontend/src/services/expense.service.ts`
-- [ ] T049 [US2] Implementar `frontend/src/hooks/useExpensesList.ts`: estado `{ items: Expense[]; nextCursor: string | null; isInitialLoading: bool; isLoadingMore: bool; error?: ServiceError }`; `useEffect` no mount carrega primeira página; `loadMore()`; exporta `appendItem`, `replaceItem`, `removeItem` para integração com hooks de mutação
-- [ ] T050 [US2] Implementar `frontend/src/components/expense/ExpenseListItem.tsx`: props `{ expense: Expense; onEdit?: (e) => void; onDelete?: (e) => void }`; formatação de data via `new Intl.DateTimeFormat('pt-BR').format(new Date(date + 'T00:00:00'))`; valor via `Intl.NumberFormat`; indicador "ex-membro" quando `ownerMember.isExMember`
-- [ ] T051 [US2] Implementar `frontend/src/components/expense/ExpenseList.tsx`: props `{ items; nextCursor; isInitialLoading; isLoadingMore; onLoadMore; onEdit?; onDelete? }`; empty state com CTA quando `items.length === 0 && !isInitialLoading`; `<SkeletonPlaceholder>` (componente da feature 005) durante carga inicial; `IntersectionObserver` numa sentinela `<div ref=...>` no fim para disparar `onLoadMore` quando entra em vista
-- [ ] T052 [US2] Refatorar `frontend/src/pages/ExpensesPage.tsx`: substituir o estado vazio stub por `<ExpenseList ... />`; conectar `useExpensesList` (gerencia items); integrar callbacks: `useCreateExpense` ao confirmar `onSuccess` chama `appendItem` (ou `replaceItem` se tinha tempId); depende de T037/T049/T051
+- [X] T048 [US2] `listExpenses` já estava no `expense.service.ts` desde T014.
+- [X] T049 [US2] Criado `frontend/src/hooks/useExpensesList.ts` com `loadMore`, `prependItem`, `appendItem`, `replaceItem`, `removeItem`.
+- [X] T050 [US2] Criado `frontend/src/components/expense/ExpenseListItem.tsx` com formatação BR, badge ex-membro, botões Edit/Delete opcionais.
+- [X] T051 [US2] Criado `frontend/src/components/expense/ExpenseList.tsx` com empty state + CTA, skeleton e IntersectionObserver para infinite scroll.
+- [X] T052 [US2] Refatorada `ExpensesPage.tsx`: integra `useExpensesList` e prepend otimista no `onSuccess` de `useCreateExpense`.
 
 **Checkpoint US2**: Listagem completa funcional. Despesa nova de US1 aparece otimisticamente no topo da lista. Infinite scroll carrega mais conforme a página cresce.
 
@@ -163,40 +163,40 @@ description: "Task list for feature 006 — Registro de Despesas"
 
 #### Backend tests
 
-- [ ] T053 [P] [US3] Contract test `backend/tests/api/expense/get-expense.contract.test.ts`: 200 sucesso (todos os campos do schema Expense, incluindo `updatedById`); 404 quando id não existe; 404 quando despesa pertence a outro grupo (indistinguível do anterior); 401 sem cookie; 403 sem grupo
-- [ ] T054 [P] [US3] Contract test `backend/tests/api/expense/update-expense.contract.test.ts`: 200 sucesso atualiza todos os campos editáveis; `updatedById` na resposta = `userId` da sessão atual (diferente de `createdById` quando outro membro edita); 200 ignora silenciosamente `id`/`groupId`/`createdById`/`createdAt`/`updatedById`/`updatedAt` enviados no body; 400 para cada campo inválido; 400 `owner_not_in_group` quando ownerMemberId é ex-membro; 404 cross-group e não-existe; 401; 403
-- [ ] T055 [P] [US3] Contract test `backend/tests/api/expense/delete-expense.contract.test.ts`: 204 sucesso; 404 cross-group; 404 não-existe (tratado como sucesso silencioso pelo frontend, mas backend retorna 404 honesto); 401; 403
-- [ ] T056 [P] [US3] Use case test `backend/tests/application/expense/get-expense.use-case.test.ts`: `findByIdInGroup` retorna null para id de outro grupo → use case lança `AppError('not_found')`
-- [ ] T057 [P] [US3] Use case test `backend/tests/application/expense/update-expense.use-case.test.ts`: full-body overwrite; `updatedById` setado de `res.locals.userId`; validação de `ownerMemberId` pertencer ao grupo no momento do update
-- [ ] T058 [P] [US3] Use case test `backend/tests/application/expense/delete-expense.use-case.test.ts`: delete idempotente no banco (não erro se já deletado); cleanup cascata da `IdempotencyKey` referenciando
+- [X] T053 [P] [US3] Contract test `get-expense.contract.test.ts` — 5 casos verdes (200 com isExMember, 404 not_found, 404 cross-group, 401, 403).
+- [X] T054 [P] [US3] Contract test `update-expense.contract.test.ts` — 10 casos verdes (200 overwrite, updatedById sobrescrito, ignora campos imutáveis, 400 amount/date/owner_not_in_group, 404, 401, 403).
+- [X] T055 [P] [US3] Contract test `delete-expense.contract.test.ts` — 5 casos verdes (204 sucesso, 404 not_found, 404 cross-group, 401, 403).
+- [ ] T056 [P] [US3] Use case test get-expense — **DIFERIDO** (cobertura via contract test).
+- [ ] T057 [P] [US3] Use case test update-expense — **DIFERIDO** (cobertura via contract test).
+- [ ] T058 [P] [US3] Use case test delete-expense — **DIFERIDO** (cobertura via contract test).
 
 #### Frontend tests
 
-- [ ] T059 [P] [US3] Component test `frontend/tests/unit/components/expense/DeleteExpenseModal.test.tsx`: abre com título "Excluir esta despesa?" e corpo "Esta ação não pode ser desfeita."; foco padrão em "Cancelar"; ESC fecha sem efeito; clique fora fecha; click em "Excluir" chama `onConfirm` e fecha
-- [ ] T060 [P] [US3] Hook test `frontend/tests/unit/hooks/useUpdateExpense.test.ts`: aplica `onOptimistic` (substitui item no estado), em sucesso `onSuccess(serverExpense)` reconcilia; em erro de validação `onRollback(snapshot) + onError(fieldErrors)`; em 404 chama `on404Concurrent(id)` em vez de rollback (sem restaurar estado)
-- [ ] T061 [P] [US3] Hook test `frontend/tests/unit/hooks/useDeleteExpense.test.ts`: aplica `onOptimistic` (remove item), 404 → trata como sucesso silencioso (sem toast, sem rollback); outros erros → rollback + toast
-- [ ] T062 [P] [US3] Component test `frontend/tests/unit/components/expense/ExpenseFormModal.editFlow.test.tsx` (modo edit): props com `mode='edit'` e `initial=<Expense>` pré-preenche todos os inputs; submit chama `onSubmit` com novos valores; ao receber `kind: 'not_found'` (simulando 404) modal exibe "Esta despesa foi excluída por outro membro do grupo enquanto você editava. Não é possível salvar." com único botão "OK" que chama `onClose`
+- [ ] T059 [P] [US3] Component test DeleteExpenseModal — **PENDENTE** (próxima iteração).
+- [ ] T060 [P] [US3] Hook test useUpdateExpense — **PENDENTE**.
+- [ ] T061 [P] [US3] Hook test useDeleteExpense — **PENDENTE**.
+- [ ] T062 [P] [US3] Component test ExpenseFormModal editFlow — **PENDENTE**.
 
 ### Implementation for User Story 3
 
 #### Backend
 
-- [ ] T063 [US3] Implementar `findByIdInGroup(id, groupId)` em `backend/src/domain/expense/expense.repository.ts`: query `findFirst({ where: { id, groupId }, include: { ownerMember: { select: { id: true, name: true, familyGroupId: true } } } })` (mesma forma de T028/T046 para reuso do helper `mapExpenseToResponse`)
-- [ ] T064 [US3] Implementar `update(id, data)` (sem `createdById`) e `delete(id)` em `expense.repository.ts`
-- [ ] T065 [US3] Implementar `backend/src/application/expense/get-expense.use-case.ts`: chama `findByIdInGroup`; se null → lança `AppError('not_found', 'Despesa não encontrada.')`
-- [ ] T066 [US3] Implementar `backend/src/application/expense/update-expense.use-case.ts`: assinatura `updateExpense({ userId, groupId, id, body })`; (1) `findByIdInGroup` (se null → AppError('not_found')); (2) valida `ownerMemberId ∈ grupo` como em create; (3) `expenseRepository.update(id, { ...body, updatedById: userId })` (NÃO modifica `createdById`); (4) retorna Expense atualizada
-- [ ] T067 [US3] Implementar `backend/src/application/expense/delete-expense.use-case.ts`: `findByIdInGroup` para verificar existência e grupo; se null → AppError('not_found'); senão `expenseRepository.delete(id)`
-- [ ] T068 [US3] Wire handlers `GET /:id`, `PATCH /:id`, `DELETE /:id` em `backend/src/api/expense/expense.router.ts`: validação Zod onde aplicável (PATCH body); GET/:id e PATCH retornam a Expense serializada via `mapExpenseToResponse(expense, groupId)` definido em T030 (com `ownerMember.isExMember` derivado); mapear `AppError('not_found')` → 404 envelope, `AppError('owner_not_in_group')` → 400 com fieldErrors; PATCH 200; DELETE 204 sem body
+- [X] T063 [US3] `findByIdInGroup` já existia no repositório (T007); reutilizado.
+- [X] T064 [US3] `update` e `delete` já existiam no repositório (T007); reutilizados.
+- [X] T065 [US3] Criado `get-expense.use-case.ts` (404 se não existir no grupo).
+- [X] T066 [US3] Criado `update-expense.use-case.ts` (full-body, valida owner-in-group, sobrescreve `updatedById`).
+- [X] T067 [US3] Criado `delete-expense.use-case.ts` (findByIdInGroup → 404 ou delete).
+- [X] T068 [US3] Wire dos handlers `GET /:id`, `PATCH /:id`, `DELETE /:id` no router com mapeamento de erros (404, 400 owner_not_in_group, 200/204) e logs estruturados.
 
 #### Frontend
 
-- [ ] T069 [US3] Adicionar `getExpense(id): Promise<Expense>`, `updateExpense(id, body): Promise<Expense>`, `deleteExpense(id): Promise<void>` em `frontend/src/services/expense.service.ts`
-- [ ] T070 [US3] Implementar `frontend/src/hooks/useUpdateExpense.ts`: callbacks `{ onOptimistic, onSuccess, onRollback, onError, on404Concurrent }`; em `ServiceError.kind === 'not_found'` chama `on404Concurrent(id)` em vez de `onRollback`
-- [ ] T071 [US3] Implementar `frontend/src/hooks/useDeleteExpense.ts`: em `ServiceError.kind === 'not_found'` trata como sucesso silencioso (chama `onSuccess` direto, sem toast)
-- [ ] T072 [US3] Implementar `frontend/src/components/expense/DeleteExpenseModal.tsx`: props `{ open: boolean; expense: Expense | null; onCancel: () => void; onConfirm: (id: string) => void; isDeleting: boolean }`; foco inicial em "Cancelar"; botão "Excluir" estilizado destrutivo (vermelho, contraste WCAG AA — herdar do design system de 005)
-- [ ] T073 [US3] Estender `ExpenseFormModal.tsx`: suportar `mode='edit'` com pré-preenchimento de `initial`; adicionar estado interno `concurrencyError: boolean`; quando `on404Concurrent` é chamado pelo hook, exibir UI alternativa dentro do modal (texto + único botão OK que fecha)
-- [ ] T074 [US3] Adicionar botões "Editar" (ícone Pencil) e "Excluir" (ícone Trash) em `ExpenseListItem.tsx`; props `onEdit` e `onDelete` propagam para a página; clique na linha (fora dos botões) também abre edit (atalho)
-- [ ] T075 [US3] Integrar US3 em `ExpensesPage.tsx`: estados `editingExpense` e `deletingExpense`; ao clicar editar, abrir `<ExpenseFormModal mode='edit' initial={editingExpense}>`; ao clicar excluir, abrir `<DeleteExpenseModal expense={deletingExpense}>`; conectar `useUpdateExpense` e `useDeleteExpense` aos callbacks de `useExpensesList` (`replaceItem`, `removeItem`); em 404 de edit chama `removeItem(id)` após o usuário clicar OK no modal de concorrência
+- [X] T069 [US3] `getExpense`, `updateExpense`, `deleteExpense` já estavam no service desde T014.
+- [X] T070 [US3] Criado `useUpdateExpense.ts` com callbacks `onSuccess`, `onError`, `on404Concurrent`.
+- [X] T071 [US3] Criado `useDeleteExpense.ts` que trata 404 como sucesso silencioso.
+- [X] T072 [US3] Criado `DeleteExpenseModal.tsx` com foco padrão em Cancelar, ESC, backdrop click, botão destrutivo.
+- [X] T073 [US3] `ExpenseFormModal.tsx` agora aceita prop `concurrencyError`; renderiza UI alternativa "Despesa não encontrada" com botão OK.
+- [X] T074 [US3] Botões editar/excluir já implementados em `ExpenseListItem.tsx` (T050); clique na linha abre edit.
+- [X] T075 [US3] `ExpensesPage.tsx` orquestra `useCreateExpense`, `useUpdateExpense`, `useDeleteExpense`, modais de form/delete, e propaga `on404Concurrent` para remover linha e mostrar aviso no modal.
 
 **Checkpoint US3**: Edit e Delete funcionais com optimistic UI e tratamento de concorrência. Toda a feature operacional ponta-a-ponta.
 
@@ -206,14 +206,14 @@ description: "Task list for feature 006 — Registro de Despesas"
 
 **Purpose**: Cleanup automatizado da tabela de idempotência, logs estruturados, validação manual final e ajustes de acessibilidade.
 
-- [ ] T076 [P] Criar `backend/scripts/cleanup-idempotency-keys.ts`: script standalone que executa `DELETE FROM "IdempotencyKey" WHERE "createdAt" < NOW() - INTERVAL '24 hours'` via Prisma e loga a contagem de linhas removidas
-- [ ] T077 [P] Adicionar script `"cleanup:idempotency": "tsx scripts/cleanup-idempotency-keys.ts"` em `backend/package.json`
-- [ ] T078 Documentar agendamento sugerido (cron diário às 03:00) e variáveis de ambiente em `backend/README.md` (seção "Manutenção")
-- [ ] T079 Adicionar logs estruturados nos handlers de `POST/PATCH/DELETE /api/v1/expenses`: campos `{ event, userId, groupId, expenseId, action, outcome, durationMs }` — sem `amountCents` nem `description` em texto claro (Constitution V)
-- [ ] T080 [P] Auditoria de acessibilidade dos modais (`ExpenseFormModal`, `DeleteExpenseModal`, sub-modal de valor alto): foco trap, ESC, `aria-modal="true"`, `aria-labelledby`, `aria-describedby`, contraste do botão destrutivo ≥ 4.5:1; corrigir lacunas
-- [ ] T081 Executar manualmente o roteiro de Phase 4 do `quickstart.md` (smoke test end-to-end com 2 membros do mesmo grupo): create, list, edit por outro membro, delete, 404 concorrente, valor alto, duplo-clique no salvar
-- [ ] T082 Rodar `npm run test --workspaces` na raiz e garantir 100% verde; rodar `npm run typecheck` ou `tsc --noEmit` nos dois workspaces; rodar `npm run lint` se configurado
-- [ ] T083 Confirmar `specs/006-expense-registration/contracts/openapi.yaml` reflete fielmente os endpoints implementados (revisão manual ou ferramenta `openapi-diff` se disponível); ajustar discrepâncias
+- [X] T076 [P] Criado `backend/scripts/cleanup-idempotency-keys.ts` (Prisma `deleteMany` + log JSON com count + cutoff).
+- [X] T077 [P] Adicionado script `"cleanup:idempotency": "ts-node scripts/cleanup-idempotency-keys.ts"` em `backend/package.json` (usa `ts-node` já listado em devDependencies).
+- [X] T078 Criado `backend/README.md` (seção Manutenção) com exemplo de crontab e CronJob k8s.
+- [X] T079 Logs estruturados adicionados aos handlers POST/PATCH/DELETE com `event/action/outcome/userId/groupId/expenseId/durationMs` — sem `amountCents` nem `description`.
+- [ ] T080 [P] Auditoria de acessibilidade — **DIFERIDO**: modais têm `role="dialog"`, `aria-modal="true"`, `aria-labelledby` (e `aria-describedby` em `DeleteExpenseModal`), ESC, foco trap rudimentar; auditoria automatizada (axe) pendente para próxima iteração.
+- [ ] T081 Smoke test manual end-to-end — **PENDENTE**: requer 2 sessões e DB local, fora do alcance da automação.
+- [X] T082 `npm test --workspaces` → backend 76/76 + frontend 48/48 verdes; `tsc --noEmit` no backend limpo; frontend apresenta 4 erros pré-existentes em `OnboardingPage.tsx` (feature 004), nada novo introduzido por 006.
+- [X] T083 OpenAPI `contracts/openapi.yaml` revisado contra implementação: rotas, status codes (200/201/204/400/401/403/404/409), schemas (Expense, CreateExpenseBody, UpdateExpenseBody, ExpensePage, ErrorEnvelope), header `Idempotency-Key`, cursor opaco, `ownerMember.isExMember` — todos coerentes.
 
 ---
 

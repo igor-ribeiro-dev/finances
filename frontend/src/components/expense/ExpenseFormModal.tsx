@@ -15,6 +15,8 @@ export interface ExpenseFormModalProps {
   initial?: Expense;
   isSaving: boolean;
   fieldErrors?: FieldError[];
+  /** When true, replaces the form with a concurrent-deletion notice. */
+  concurrencyError?: boolean;
   onClose: () => void;
   onSubmit: (body: CreateExpenseBody) => Promise<void> | void;
 }
@@ -35,6 +37,7 @@ export function ExpenseFormModal({
   initial,
   isSaving,
   fieldErrors,
+  concurrencyError,
   onClose,
   onSubmit,
 }: ExpenseFormModalProps) {
@@ -122,6 +125,37 @@ export function ExpenseFormModal({
   }
 
   const title = mode === 'create' ? 'Nova despesa' : 'Editar despesa';
+
+  if (concurrencyError) {
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="concurrent-modal-title"
+        className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
+      >
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+          <h2 id="concurrent-modal-title" className="mb-2 text-lg font-semibold text-gray-900">
+            Despesa não encontrada
+          </h2>
+          <p className="mb-5 text-sm text-gray-700">
+            Esta despesa foi excluída por outro membro do grupo enquanto você editava. Não é
+            possível salvar.
+          </p>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              autoFocus
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
