@@ -78,16 +78,16 @@ description: "Task list for feature 006 — Registro de Despesas"
 #### Backend tests
 
 - [X] T019 [P] [US1] Contract test `backend/tests/api/expense/create-expense.contract.test.ts` — 10 casos verdes cobrindo 201 sem chave, 201 com chave, 200 replay, 409 chave alheia, 400 amount/date/owner_not_in_group inválidos, 401, 403, e serialização ex-membro.
-- [ ] T020 [P] [US1] Use case test `backend/tests/application/expense/create-expense.use-case.test.ts` (Jest puro): **DIFERIDO** — cobertura equivalente já provida pelo contract test T019 (rota chama use case end-to-end com Prisma mockado). Re-priorizar se quisermos unit tests separados do contract test.
+- [X] T020 [P] [US1] Use case test `backend/tests/application/expense/create-expense.use-case.test.ts` — 6 casos verdes (owner_not_in_group, createdById/updatedById iguais no POST, IdempotencyKey gravada dentro da tx, replay de chave, conflito de chave alheia, sem chave → sem write).
 
 #### Frontend tests
 
-- [ ] T021 [P] [US1] Component test MoneyInput — **PENDENTE** (próxima sessão).
-- [ ] T022 [P] [US1] Component test OwnerMemberPicker — **PENDENTE**.
-- [ ] T023 [P] [US1] Component test PaymentMethodPicker — **PENDENTE**.
-- [ ] T024 [P] [US1] Component test ExpenseFormModal create-mode — **PENDENTE**.
-- [ ] T025 [P] [US1] Hook test useCreateExpense — **PENDENTE**.
-- [ ] T026 [P] [US1] Page test ExpensesPage create-flow — **PENDENTE**.
+- [X] T021 [P] [US1] Component test MoneyInput — 8 casos verdes (formato R$ 0,00, push de dígitos, Backspace, Escape, Delete, ignora vírgula/letras, cap em 2 bi, aria-invalid).
+- [X] T022 [P] [US1] Component test OwnerMemberPicker — 4 casos verdes (sort pt-BR, onChange, disabled, aria-invalid).
+- [X] T023 [P] [US1] Component test PaymentMethodPicker — 4 casos verdes (radiogroup, aria-checked, click, disabled).
+- [X] T024 [P] [US1] Component test ExpenseFormModal create-mode — 10 casos verdes (titles, autoFocus, fieldErrors, submit, validation local, high-value modal, ESC, isSaving, concurrency notice).
+- [X] T025 [P] [US1] Hook test useCreateExpense — 5 casos verdes (envia Idempotency-Key, mantém key em retry de validation, rotaciona em network error, fieldErrors+reset, bloqueia concurrent).
+- [X] T026 [P] [US1] Page test ExpensesPage create-flow — 3 casos verdes (empty state com CTA, criar/toast/prepend, exibir fieldErrors do servidor).
 
 ### Implementation for User Story 1
 
@@ -124,13 +124,13 @@ description: "Task list for feature 006 — Registro de Despesas"
 #### Backend tests
 
 - [X] T039 [P] [US2] Contract test `backend/tests/api/expense/list-expenses.contract.test.ts` — 13 casos verdes cobrindo lista vazia, full page com nextCursor, página final, cursor query, cursor malformado, limit inválido, 401, 403, isolamento de grupo e serialização de `isExMember`.
-- [ ] T040 [P] [US2] Use case test `backend/tests/application/expense/list-expenses.use-case.test.ts`: **DIFERIDO** — cobertura equivalente via contract test T039 (encode/decode do cursor exercitado end-to-end pela rota). Re-priorizar se quisermos unit isolados.
+- [X] T040 [P] [US2] Use case test `backend/tests/application/expense/list-expenses.use-case.test.ts` — 8 casos verdes (round-trip de cursor, decode null para token malformado/date inválido/UUID inválido, nextCursor null < limite, LIMIT n+1 emite nextCursor, throw invalid_cursor, decode passa OR para Prisma).
 
 #### Frontend tests
 
-- [ ] T041 [P] [US2] Component test ExpenseListItem — **PENDENTE** (próxima iteração).
-- [ ] T042 [P] [US2] Component test ExpenseList — **PENDENTE**.
-- [ ] T043 [P] [US2] Hook test useExpensesList — **PENDENTE**.
+- [X] T041 [P] [US2] Component test ExpenseListItem — 8 casos verdes (data pt-BR, valor BRL, owner+method, label crédito, badge ex-membro, sem badge ativo, botões edit/delete, click na linha).
+- [X] T042 [P] [US2] Component test ExpenseList — 5 casos verdes (skeleton, empty state com CTA, render lista, sentinela com nextCursor, "Carregando mais" quando isLoadingMore).
+- [X] T043 [P] [US2] Hook test useExpensesList — 6 casos verdes (load no mount, loadMore com cursor, prependItem, replaceItem, removeItem, no-op se nextCursor=null).
 
 ### Implementation for User Story 2
 
@@ -166,16 +166,16 @@ description: "Task list for feature 006 — Registro de Despesas"
 - [X] T053 [P] [US3] Contract test `get-expense.contract.test.ts` — 5 casos verdes (200 com isExMember, 404 not_found, 404 cross-group, 401, 403).
 - [X] T054 [P] [US3] Contract test `update-expense.contract.test.ts` — 10 casos verdes (200 overwrite, updatedById sobrescrito, ignora campos imutáveis, 400 amount/date/owner_not_in_group, 404, 401, 403).
 - [X] T055 [P] [US3] Contract test `delete-expense.contract.test.ts` — 5 casos verdes (204 sucesso, 404 not_found, 404 cross-group, 401, 403).
-- [ ] T056 [P] [US3] Use case test get-expense — **DIFERIDO** (cobertura via contract test).
-- [ ] T057 [P] [US3] Use case test update-expense — **DIFERIDO** (cobertura via contract test).
-- [ ] T058 [P] [US3] Use case test delete-expense — **DIFERIDO** (cobertura via contract test).
+- [X] T056 [P] [US3] Use case test get-expense — 2 casos verdes (not_found quando fora do grupo, scope `{ id, groupId }` no findFirst).
+- [X] T057 [P] [US3] Use case test update-expense — 4 casos verdes (not_found, owner_not_in_group, updatedById sobrescrito sem tocar createdById, trim de descrição + parse de date).
+- [X] T058 [P] [US3] Use case test delete-expense — 2 casos verdes (not_found sem delete; delete escopado ao grupo).
 
 #### Frontend tests
 
-- [ ] T059 [P] [US3] Component test DeleteExpenseModal — **PENDENTE** (próxima iteração).
-- [ ] T060 [P] [US3] Hook test useUpdateExpense — **PENDENTE**.
-- [ ] T061 [P] [US3] Hook test useDeleteExpense — **PENDENTE**.
-- [ ] T062 [P] [US3] Component test ExpenseFormModal editFlow — **PENDENTE**.
+- [X] T059 [P] [US3] Component test DeleteExpenseModal — 7 casos verdes (não renderiza fechada, título/corpo, foco em Cancelar, ESC chama onCancel, click "Excluir" passa id, isDeleting desabilita botões, ESC ignorado durante delete).
+- [X] T060 [P] [US3] Hook test useUpdateExpense — 4 casos verdes (onSuccess com expense, fieldErrors em validation, on404Concurrent em not_found, bloqueio concurrent).
+- [X] T061 [P] [US3] Hook test useDeleteExpense — 4 casos verdes (onSuccess em 204, 404 vira sucesso silencioso, onError em network, bloqueio concurrent).
+- [X] T062 [P] [US3] Component test ExpenseFormModal editFlow — 4 casos verdes (title "Editar despesa", pré-preenche todos os inputs, submit com body atualizado, concurrencyError exibe notice + botão OK).
 
 ### Implementation for User Story 3
 

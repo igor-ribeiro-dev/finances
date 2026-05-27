@@ -44,11 +44,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     res = await fetch(`${BASE}${path}`, {
       credentials: 'include',
+      ...init,
       headers: {
         'Content-Type': 'application/json',
         ...(init?.headers ?? {}),
       },
-      ...init,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Falha de rede.';
