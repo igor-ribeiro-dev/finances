@@ -297,11 +297,11 @@ description: "Task list for feature 007 — Categorias de Despesas"
 
 - [X] T092 Verificar cleanup script: `cd backend && npm run cleanup:idempotency` em ambiente dev com mix de `EXPENSE` e `CATEGORY` keys → confirma que purga ambos os tipos (TTL de 24h é agnóstico ao resourceType).
 
-- [ ] T093 Smoke test manual em dev seguindo `specs/007-expense-categories/quickstart.md` §3 (passos 3.1 a 3.10). Tira screenshots dos 4 estados-chave: empty state de categorias, modal de criação com parent picker, modal bloqueante de delete, etiqueta de categoria na listagem de despesas. Anexar ao PR.
+- [X] T093 Smoke test manual em dev seguindo `specs/007-expense-categories/quickstart.md` §3 (passos 3.1 a 3.10). Tira screenshots dos 4 estados-chave: empty state de categorias, modal de criação com parent picker, modal bloqueante de delete, etiqueta de categoria na listagem de despesas. Anexar ao PR.
 
 - [ ] T094 Verificar acessibilidade dos novos modais: rodar axe-core (ou inspeção manual via React DevTools + DevTools accessibility tree) em `CategoryFormModal` e `DeleteCategoryModal` (ambas variantes) — focus trap correto, ESC funcional, aria-modal/aria-labelledby presentes.
 
-- [ ] T095 Atualizar PR description com checklist de FRs cobertas (espelhar tabela em `specs/007-expense-categories/quickstart.md §5`) e referência ao plano + clarification sessions.
+- [X] T095 Atualizar PR description com checklist de FRs cobertas (espelhar tabela em `specs/007-expense-categories/quickstart.md §5`) e referência ao plano + clarification sessions.
 
 - [X] T096 [P] Benchmark automatizado SC-006 em `backend/tests/performance/list-categories.perf.test.ts`: seedar uma família com 50 categorias (10 raízes + 40 sub-categorias distribuídas, nomes PT-BR variados) via fixture Prisma direto na transação de setup; executar o `list-categories.use-case` 20 vezes consecutivas medindo `performance.now()` por chamada; asserir que (a) a média < 200 ms e (b) o p95 < 350 ms em ambiente de CI — proxy automatizado para o alvo end-to-end de 1 s de SC-006 (que inclui também o render React no client, coberto manualmente em T093). Pular o teste em ambiente sem `DATABASE_URL` para não quebrar dev local sem Postgres rodando (`describe.skip` condicional ou `it.skipIf`).
 
