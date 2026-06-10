@@ -77,4 +77,32 @@ describe('ExpenseListItem', () => {
     fireEvent.click(screen.getByText('Mercado'));
     expect(onEdit).toHaveBeenCalled();
   });
+
+  describe('category badge (US2)', () => {
+    it('renders no badge when there is no category', () => {
+      render(<ExpenseListItem expense={mk({ category: null, subCategory: null })} />);
+      expect(screen.queryByTestId('category-badge')).not.toBeInTheDocument();
+    });
+
+    it('renders the root name when only a root category is set', () => {
+      render(
+        <ExpenseListItem
+          expense={mk({ category: { id: 'r1', name: 'Alimentação' }, subCategory: null })}
+        />,
+      );
+      expect(screen.getByTestId('category-badge')).toHaveTextContent('Alimentação');
+    });
+
+    it('renders "Raiz · Sub" when both are set', () => {
+      render(
+        <ExpenseListItem
+          expense={mk({
+            category: { id: 'r1', name: 'Alimentação' },
+            subCategory: { id: 's1', name: 'Mercado' },
+          })}
+        />,
+      );
+      expect(screen.getByTestId('category-badge')).toHaveTextContent('Alimentação · Mercado');
+    });
+  });
 });

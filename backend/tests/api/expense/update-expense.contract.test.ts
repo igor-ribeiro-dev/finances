@@ -92,6 +92,51 @@ describe('PATCH /api/v1/expenses/:id', () => {
     expect(res.body.description).toBe('Atualizado');
   });
 
+  it('returns a denormalized category/subCategory after changing categoryId', async () => {
+    setupAuthedMember('user-bruno');
+    expense.findFirst.mockResolvedValue(mockExisting());
+    user.findFirst.mockResolvedValue({ id: OWNER_ID });
+    expense.update.mockResolvedValue({
+      ...mockUpdated('user-bruno'),
+      category: {
+        id: 's1',
+        name: 'Mercado',
+        parentId: 'r1',
+        parent: { id: 'r1', name: 'Alimentação' },
+      },
+    });
+
+    const res = await authedPatch({
+      ...validBody,
+      categoryId: 'cccccccc-1111-4abc-8def-111111111111',
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.category).toEqual({ id: 'r1', name: 'Alimentação' });
+    expect(res.body.subCategory).toEqual({ id: 's1', name: 'Mercado' });
+    expect(expense.update.mock.calls[0]![0].data.categoryId).toBe(
+      'cccccccc-1111-4abc-8def-111111111111',
+    );
+  });
+
+  it('warns when the categoryId was deleted during edit (FR-018)', async () => {
+    setupAuthedMember('user-bruno');
+    expense.findFirst.mockResolvedValue(mockExisting());
+    user.findFirst.mockResolvedValue({ id: OWNER_ID });
+    expense.update
+      .mockRejectedValueOnce({ code: 'P2003', meta: { field_name: 'Expense_categoryId_fkey' } })
+      .mockResolvedValueOnce({ ...mockUpdated('user-bruno'), category: null });
+
+    const res = await authedPatch({
+      ...validBody,
+      categoryId: 'cccccccc-1111-4abc-8def-111111111111',
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.warnings).toEqual(['category.removed_concurrently']);
+    expect(res.body.category).toBeNull();
+  });
+
   it('sets updatedById to the session userId (different from createdById)', async () => {
     setupAuthedMember('user-bruno');
     expense.findFirst.mockResolvedValue(mockExisting()); // createdById: user-ana

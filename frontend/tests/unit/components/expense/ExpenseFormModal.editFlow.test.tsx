@@ -91,6 +91,7 @@ describe('ExpenseFormModal (edit mode)', () => {
       description: 'Atualizado',
       paymentMethod: 'CREDIT_CARD',
       ownerMemberId: 'm-1',
+      categoryId: null,
     });
   });
 

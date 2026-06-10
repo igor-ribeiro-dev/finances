@@ -8,6 +8,7 @@ import { useCreateExpense } from '../hooks/useCreateExpense';
 import { useExpensesList } from '../hooks/useExpensesList';
 import { useUpdateExpense } from '../hooks/useUpdateExpense';
 import { useDeleteExpense } from '../hooks/useDeleteExpense';
+import { useCategoriesList } from '../hooks/useCategoriesList';
 import { Toast, type ToastState } from '../components/Toast';
 import type { Expense } from '../types/expense';
 
@@ -33,6 +34,8 @@ export function ExpensesPage() {
     removeItem,
   } = useExpensesList();
 
+  const { roots: categoryRoots, rootsById: categorySubsByRoot } = useCategoriesList();
+
   useEffect(() => {
     let cancelled = false;
     listGroupMembers()
@@ -49,6 +52,15 @@ export function ExpensesPage() {
 
   const showToast = useCallback((s: ToastState) => setToast(s), []);
 
+  const concurrentRemovalToast = useCallback(
+    () =>
+      showToast({
+        kind: 'success',
+        message: 'A categoria selecionada foi removida; a despesa foi salva sem categoria.',
+      }),
+    [showToast],
+  );
+
   const createHook = useCreateExpense({
     onSuccess: (expense) => {
       prependItem(expense);
@@ -58,6 +70,7 @@ export function ExpensesPage() {
     onError: (err) => {
       if (err.kind !== 'validation') showToast({ kind: 'error', message: err.message });
     },
+    onConcurrentCategoryRemoval: concurrentRemovalToast,
   });
 
   const updateHook = useUpdateExpense({
@@ -77,6 +90,7 @@ export function ExpensesPage() {
         showToast({ kind: 'error', message: err.message });
       }
     },
+    onConcurrentCategoryRemoval: concurrentRemovalToast,
   });
 
   const deleteHook = useDeleteExpense({
@@ -155,6 +169,8 @@ export function ExpensesPage() {
         mode={formMode.kind === 'edit' ? 'edit' : 'create'}
         members={members}
         initial={formInitial}
+        roots={categoryRoots}
+        subsByRoot={categorySubsByRoot}
         onClose={handleCloseForm}
         onSubmit={handleSubmitForm}
         isSaving={formIsSaving}

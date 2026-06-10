@@ -40,6 +40,9 @@ export const createExpenseBody = z.object({
   ownerMemberId: z
     .string({ message: 'O responsável é obrigatório.' })
     .uuid('Identificador de membro inválido.'),
+  // Single-column design (FR-008/Q5): one id maps both root and sub selectors.
+  // Optional + nullable so older callers omitting it still default to "no category".
+  categoryId: z.string().uuid('Categoria inválida.').nullable().optional(),
 });
 
 export const updateExpenseBody = createExpenseBody;

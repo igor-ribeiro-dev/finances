@@ -100,7 +100,8 @@ describe('createExpenseUseCase', () => {
       data: {
         key: 'a2c1d4b6-1111-4abc-8def-1234567890ab',
         userId: 'user-ana',
-        expenseId: 'exp-99',
+        resourceType: 'EXPENSE',
+        resourceId: 'exp-99',
       },
     });
   });
@@ -109,7 +110,8 @@ describe('createExpenseUseCase', () => {
     idempotency.findUnique.mockResolvedValue({
       key: 'k',
       userId: 'user-ana',
-      expenseId: 'exp-original',
+      resourceType: 'EXPENSE',
+      resourceId: 'exp-original',
       createdAt: new Date(),
     });
     expense.findUnique.mockResolvedValue(mockExpenseRow({ id: 'exp-original' }));
@@ -126,11 +128,12 @@ describe('createExpenseUseCase', () => {
     expect(expense.create).not.toHaveBeenCalled();
   });
 
-  it('throws idempotency_key_conflict when key belongs to another user', async () => {
+  it('throws idempotency.conflict when key belongs to another user', async () => {
     idempotency.findUnique.mockResolvedValue({
       key: 'k',
       userId: 'other',
-      expenseId: 'exp-x',
+      resourceType: 'EXPENSE',
+      resourceId: 'exp-x',
       createdAt: new Date(),
     });
 
@@ -141,7 +144,26 @@ describe('createExpenseUseCase', () => {
         idempotencyKey: 'k',
         body: validBody,
       }),
-    ).rejects.toMatchObject({ code: 'idempotency_key_conflict' });
+    ).rejects.toMatchObject({ code: 'idempotency.conflict' });
+  });
+
+  it('throws idempotency.cross_resource_conflict when key was used for a CATEGORY', async () => {
+    idempotency.findUnique.mockResolvedValue({
+      key: 'k',
+      userId: 'user-ana',
+      resourceType: 'CATEGORY',
+      resourceId: 'cat-x',
+      createdAt: new Date(),
+    });
+
+    await expect(
+      createExpenseUseCase({
+        userId: 'user-ana',
+        groupId: 'group-1',
+        idempotencyKey: 'k',
+        body: validBody,
+      }),
+    ).rejects.toMatchObject({ code: 'idempotency.cross_resource_conflict' });
   });
 
   it('does not write IdempotencyKey when no key is provided', async () => {
@@ -158,5 +180,41 @@ describe('createExpenseUseCase', () => {
     });
 
     expect(idempotency.create).not.toHaveBeenCalled();
+  });
+
+  it('passes categoryId through to prisma.create', async () => {
+    user.findFirst.mockResolvedValue({ id: 'owner-1' });
+    expense.create.mockResolvedValue(mockExpenseRow());
+    tx.mockImplementation((cb: (c: unknown) => Promise<unknown>) =>
+      cb(prisma as unknown as object),
+    );
+
+    await createExpenseUseCase({
+      userId: 'user-ana',
+      groupId: 'group-1',
+      body: { ...validBody, categoryId: 'cat-1' },
+    });
+
+    expect(expense.create.mock.calls[0]![0].data.categoryId).toBe('cat-1');
+  });
+
+  it('retries with categoryId=null and adds a warning on P2003 (FR-018)', async () => {
+    user.findFirst.mockResolvedValue({ id: 'owner-1' });
+    expense.create
+      .mockRejectedValueOnce({ code: 'P2003', meta: { field_name: 'Expense_categoryId_fkey' } })
+      .mockResolvedValueOnce(mockExpenseRow());
+    tx.mockImplementation((cb: (c: unknown) => Promise<unknown>) =>
+      cb(prisma as unknown as object),
+    );
+
+    const result = await createExpenseUseCase({
+      userId: 'user-ana',
+      groupId: 'group-1',
+      body: { ...validBody, categoryId: 'cat-1' },
+    });
+
+    expect(result.warnings).toEqual(['category.removed_concurrently']);
+    expect(expense.create).toHaveBeenCalledTimes(2);
+    expect(expense.create.mock.calls[1]![0].data.categoryId).toBeNull();
   });
 });

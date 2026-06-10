@@ -5,6 +5,7 @@ import {
   type ExpenseWithOwner,
   type UpdateExpenseData,
 } from '../../domain/expense/expense.repository';
+import { CATEGORY_REMOVED_CONCURRENTLY, isCategoryFkViolation } from './expense-helpers';
 
 export interface UpdateExpenseInput {
   userId: string;
@@ -16,10 +17,18 @@ export interface UpdateExpenseInput {
     description: string;
     paymentMethod: 'CASH_OR_DEBIT' | 'CREDIT_CARD';
     ownerMemberId: string;
+    categoryId?: string | null;
   };
 }
 
-export async function updateExpenseUseCase(input: UpdateExpenseInput): Promise<ExpenseWithOwner> {
+export interface UpdateExpenseResult {
+  expense: ExpenseWithOwner;
+  warnings: string[];
+}
+
+export async function updateExpenseUseCase(
+  input: UpdateExpenseInput,
+): Promise<UpdateExpenseResult> {
   const existing = await expenseRepository.findByIdInGroup(input.id, input.groupId);
   if (!existing) throw new AppError('not_found', 'Despesa não encontrada.');
 
@@ -40,7 +49,21 @@ export async function updateExpenseUseCase(input: UpdateExpenseInput): Promise<E
     description: input.body.description.trim(),
     paymentMethod: input.body.paymentMethod,
     ownerMemberId: input.body.ownerMemberId,
+    categoryId: input.body.categoryId ?? null,
     updatedById: input.userId,
   };
-  return expenseRepository.update(input.id, data);
+
+  // FR-018: same concurrent-removal recovery as create — retry once with null.
+  const warnings: string[] = [];
+  try {
+    const expense = await expenseRepository.update(input.id, data);
+    return { expense, warnings };
+  } catch (err) {
+    if (data.categoryId !== null && isCategoryFkViolation(err)) {
+      const expense = await expenseRepository.update(input.id, { ...data, categoryId: null });
+      warnings.push(CATEGORY_REMOVED_CONCURRENTLY);
+      return { expense, warnings };
+    }
+    throw err;
+  }
 }

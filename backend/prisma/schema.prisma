@@ -24,18 +24,43 @@ model User {
 }
 
 model FamilyGroup {
-  id        String    @id @default(uuid())
-  name      String    @db.VarChar(100)
-  members   User[]
-  invite    Invite?
-  expenses  Expense[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id         String     @id @default(uuid())
+  name       String     @db.VarChar(100)
+  members    User[]
+  invite     Invite?
+  expenses   Expense[]
+  categories Category[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 }
 
 enum PaymentMethod {
   CASH_OR_DEBIT
   CREDIT_CARD
+}
+
+enum ResourceType {
+  EXPENSE
+  CATEGORY
+}
+
+model Category {
+  id          String      @id @default(uuid())
+  groupId     String
+  group       FamilyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name        String      @db.VarChar(60)
+  parentId    String?
+  parent      Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children    Category[]  @relation("CategoryHierarchy")
+  expenses    Expense[]
+  // normalizedName is a Postgres GENERATED ALWAYS column (declared in raw SQL,
+  // collated pt_BR_ci_as). It backs the two partial unique indexes. The Prisma
+  // client never reads or writes it — hence @ignore.
+  normalizedName String   @ignore
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([groupId], map: "category_group_idx")
 }
 
 model Expense {
@@ -52,23 +77,26 @@ model Expense {
   createdBy       User             @relation("ExpenseAuthor", fields: [createdById], references: [id])
   updatedById     String
   updatedBy       User             @relation("ExpenseEditor", fields: [updatedById], references: [id])
+  categoryId      String?
+  category        Category?        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-  idempotencyKeys IdempotencyKey[]
 
   @@index([groupId, date(sort: Desc), id(sort: Desc)], map: "expense_group_date_id_idx")
+  @@index([categoryId], map: "expense_category_idx")
 }
 
 model IdempotencyKey {
-  key       String   @id @db.VarChar(64)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expenseId String
-  expense   Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  key          String       @id @db.VarChar(64)
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resourceType ResourceType
+  resourceId   String
+  createdAt    DateTime     @default(now())
 
   @@index([userId], map: "idempotency_user_idx")
   @@index([createdAt], map: "idempotency_created_at_idx")
+  @@index([resourceType, resourceId], map: "idempotency_resource_idx")
 }
 
 model Invite {

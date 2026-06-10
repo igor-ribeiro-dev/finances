@@ -10,6 +10,7 @@ import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { OnboardingPage } from '../pages/OnboardingPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { ExpensesPage } from '../pages/ExpensesPage';
+import { CategoriesPage } from '../pages/CategoriesPage';
 
 function SessionExpiredHandler() {
   const navigate = useNavigate();
@@ -65,7 +66,7 @@ export function AppRouter() {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <div className="p-8 text-gray-500">Em breve</div>
+                  <CategoriesPage />
                 </AppLayout>
               </ProtectedRoute>
             }

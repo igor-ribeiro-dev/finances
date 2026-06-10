@@ -1,8 +1,17 @@
 import type { Prisma, Expense, User } from '@prisma/client';
 import { prisma } from '../../infra/prisma';
 
+/** Minimal category reference embedded on an expense (denormalization source). */
+export interface ExpenseCategoryRef {
+  id: string;
+  name: string;
+  parentId: string | null;
+  parent: { id: string; name: string } | null;
+}
+
 export type ExpenseWithOwner = Expense & {
   ownerMember: Pick<User, 'id' | 'name' | 'familyGroupId'>;
+  category: ExpenseCategoryRef | null;
 };
 
 export interface CreateExpenseData {
@@ -12,6 +21,7 @@ export interface CreateExpenseData {
   description: string;
   paymentMethod: 'CASH_OR_DEBIT' | 'CREDIT_CARD';
   ownerMemberId: string;
+  categoryId: string | null;
   createdById: string;
   updatedById: string;
 }
@@ -22,11 +32,22 @@ export interface UpdateExpenseData {
   description: string;
   paymentMethod: 'CASH_OR_DEBIT' | 'CREDIT_CARD';
   ownerMemberId: string;
+  categoryId: string | null;
   updatedById: string;
 }
 
+// Single SQL query with a double LEFT JOIN (category + its parent root) — FR-026,
+// zero N+1. parent is only present for sub-categories.
 const ownerMemberInclude = {
   ownerMember: { select: { id: true, name: true, familyGroupId: true } },
+  category: {
+    select: {
+      id: true,
+      name: true,
+      parentId: true,
+      parent: { select: { id: true, name: true } },
+    },
+  },
 } as const;
 
 export const expenseRepository = {

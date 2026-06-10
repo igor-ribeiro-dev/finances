@@ -1,5 +1,6 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import type { Expense } from '../../types/expense';
+import { CategoryBadge } from './CategoryBadge';
 
 interface ExpenseListItemProps {
   expense: Expense;
@@ -62,6 +63,7 @@ export function ExpenseListItem({ expense, onEdit, onDelete }: ExpenseListItemPr
           <span className="text-xs text-gray-500">{METHOD_LABEL[expense.paymentMethod]}</span>
         </div>
         <p className="truncate text-sm font-medium text-gray-900">{expense.description}</p>
+        <CategoryBadge category={expense.category} subCategory={expense.subCategory} />
         <p className="mt-1 text-xs text-gray-600">
           <span>{expense.ownerMember.name}</span>
           {isExMember && (

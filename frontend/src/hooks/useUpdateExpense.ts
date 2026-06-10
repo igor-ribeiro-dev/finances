@@ -6,6 +6,8 @@ interface UseUpdateExpenseOptions {
   onSuccess?: (expense: Expense) => void;
   onError?: (err: ServiceError) => void;
   on404Concurrent?: (id: string) => void;
+  /** FR-018: invoked when the response carries category.removed_concurrently. */
+  onConcurrentCategoryRemoval?: () => void;
 }
 
 interface UseUpdateExpenseReturn {
@@ -26,6 +28,9 @@ export function useUpdateExpense(options: UseUpdateExpenseOptions = {}): UseUpda
       setFieldErrors([]);
       try {
         const expense = await expenseService.updateExpense(id, body);
+        if (expense.warnings?.includes('category.removed_concurrently')) {
+          options.onConcurrentCategoryRemoval?.();
+        }
         options.onSuccess?.(expense);
       } catch (err) {
         const e = err as ServiceError;

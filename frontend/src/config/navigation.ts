@@ -31,7 +31,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Categorias',
     path: '/categorias',
     icon: Tag,
-    status: 'coming-soon',
+    status: 'active',
   },
   {
     id: 'orcamentos',
