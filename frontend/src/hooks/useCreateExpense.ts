@@ -5,6 +5,8 @@ import type { CreateExpenseBody, Expense, FieldError, ServiceError } from '../ty
 interface UseCreateExpenseOptions {
   onSuccess?: (expense: Expense) => void;
   onError?: (err: ServiceError) => void;
+  /** FR-018: invoked when the response carries category.removed_concurrently. */
+  onConcurrentCategoryRemoval?: () => void;
 }
 
 interface UseCreateExpenseReturn {
@@ -42,6 +44,9 @@ export function useCreateExpense(options: UseCreateExpenseOptions = {}): UseCrea
       try {
         const expense = await expenseService.createExpense(body, key);
         keyRef.current = null; // success — next submit will regenerate
+        if (expense.warnings?.includes('category.removed_concurrently')) {
+          options.onConcurrentCategoryRemoval?.();
+        }
         options.onSuccess?.(expense);
       } catch (err) {
         const e = err as ServiceError;

@@ -200,4 +200,37 @@ describe('GET /api/v1/expenses', () => {
     const res = await authed();
     expect(res.body.items[0].ownerMember.isExMember).toBe(true);
   });
+
+  it('denormalizes category/subCategory across a mixed page (FR-026 cases A/B/C)', async () => {
+    setupAuthedMember();
+    expense.findMany.mockResolvedValue([
+      mockExpense({
+        id: 'e-root',
+        category: { id: 'r1', name: 'Alimentação', parentId: null, parent: null },
+      }),
+      mockExpense({
+        id: 'e-sub',
+        category: {
+          id: 's1',
+          name: 'Mercado',
+          parentId: 'r1',
+          parent: { id: 'r1', name: 'Alimentação' },
+        },
+      }),
+      mockExpense({ id: 'e-none', category: null }),
+    ]);
+
+    const res = await authed();
+    expect(res.status).toBe(200);
+    const [a, b, c] = res.body.items;
+    // A) root → category set, subCategory null
+    expect(a.category).toEqual({ id: 'r1', name: 'Alimentação' });
+    expect(a.subCategory).toBeNull();
+    // B) sub → category is the resolved root, subCategory is the sub
+    expect(b.category).toEqual({ id: 'r1', name: 'Alimentação' });
+    expect(b.subCategory).toEqual({ id: 's1', name: 'Mercado' });
+    // C) none → both null
+    expect(c.category).toBeNull();
+    expect(c.subCategory).toBeNull();
+  });
 });

@@ -66,6 +66,24 @@ describe('GET /api/v1/expenses/:id', () => {
     expect(res.body.ownerMember.familyGroupId).toBeUndefined();
   });
 
+  it('resolves category=root and subCategory=sub when categoryId points to a sub', async () => {
+    setupAuthedMember();
+    expense.findFirst.mockResolvedValue({
+      ...mockExpense(),
+      category: {
+        id: 's1',
+        name: 'Mercado',
+        parentId: 'r1',
+        parent: { id: 'r1', name: 'Alimentação' },
+      },
+    });
+
+    const res = await authedGet();
+    expect(res.status).toBe(200);
+    expect(res.body.category).toEqual({ id: 'r1', name: 'Alimentação' });
+    expect(res.body.subCategory).toEqual({ id: 's1', name: 'Mercado' });
+  });
+
   it('returns 404 when expense does not exist', async () => {
     setupAuthedMember();
     expense.findFirst.mockResolvedValue(null);

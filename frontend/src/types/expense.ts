@@ -6,6 +6,12 @@ export interface ExpenseOwnerSnapshot {
   isExMember: boolean;
 }
 
+/** Denormalized category reference embedded on an expense (server-resolved). */
+export interface CategoryRef {
+  id: string;
+  name: string;
+}
+
 export interface Expense {
   id: string;
   groupId: string;
@@ -17,8 +23,14 @@ export interface Expense {
   ownerMember: ExpenseOwnerSnapshot;
   createdById: string;
   updatedById: string;
+  /** FR-026: the resolved root (case A/B) or null (case C). */
+  category?: CategoryRef | null;
+  /** FR-026: the sub-category (case B) or null. */
+  subCategory?: CategoryRef | null;
   createdAt: string; // ISO
   updatedAt: string; // ISO
+  /** FR-018: e.g. ["category.removed_concurrently"]. */
+  warnings?: string[];
 }
 
 export interface CreateExpenseBody {
@@ -27,6 +39,8 @@ export interface CreateExpenseBody {
   description: string;
   paymentMethod: PaymentMethod;
   ownerMemberId: string;
+  /** Single-column design (FR-008): maps both root + sub pickers to one id. */
+  categoryId?: string | null;
 }
 
 export type UpdateExpenseBody = CreateExpenseBody;

@@ -72,7 +72,7 @@ expenseRouter.post('/', async (req: Request, res: Response) => {
       idempotencyKey,
       body: bodyParse.data,
     });
-    const payload = mapExpenseToResponse(result.expense, groupId);
+    const payload = mapExpenseToResponse(result.expense, groupId, result.warnings);
     const status = result.status === 'created' ? 201 : 200;
     res.status(status).json(payload);
     logMutation({
@@ -85,7 +85,10 @@ expenseRouter.post('/', async (req: Request, res: Response) => {
     });
   } catch (err) {
     if (err instanceof AppError) {
-      if (err.code === 'idempotency_key_conflict') {
+      if (
+        err.code === 'idempotency.conflict' ||
+        err.code === 'idempotency.cross_resource_conflict'
+      ) {
         sendError(res, 409, err.code, err.message);
         logMutation({
           action: 'create',
@@ -192,13 +195,13 @@ expenseRouter.patch('/:id', async (req: Request, res: Response) => {
   }
 
   try {
-    const expense = await updateExpenseUseCase({
+    const { expense, warnings } = await updateExpenseUseCase({
       userId,
       groupId,
       id,
       body: bodyParse.data,
     });
-    res.status(200).json(mapExpenseToResponse(expense, groupId));
+    res.status(200).json(mapExpenseToResponse(expense, groupId, warnings));
     logMutation({
       action: 'update',
       outcome: 'success',

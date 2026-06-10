@@ -1,0 +1,679 @@
+openapi: 3.1.0
+info:
+  title: Finances API — Categories module
+  version: 1.0.0-007
+  description: |
+    HTTP contract for feature 007 (Categorias de Despesas).
+
+    Covers:
+      - 5 new endpoints under /api/v1/categories (+ /:id/delete-preview)
+      - Evolutions to /api/v1/expenses endpoints (categoryId field on body, denormalized
+        `category`/`subCategory` objects on responses, optional `warnings` field).
+
+    All endpoints require an active session cookie (set by feature 004). All
+    requests are scoped to the user's family group; cross-group resources are
+    indistinguishable from non-existent ones (404 on /:id from another group).
+  contact:
+    name: Família app — backend
+servers:
+  - url: http://localhost:3000
+    description: Local dev
+  - url: https://app.familia.example/api
+    description: Production (TBD)
+tags:
+  - name: categories
+    description: Manage the family group's category tree (root + sub-categories).
+  - name: expenses
+    description: Existing expense endpoints with category fields added.
+
+#####################################################################
+# Components (security, reusable params/schemas/responses)
+#####################################################################
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sid
+      description: Session cookie set by /api/v1/auth/login. Required on every endpoint.
+
+  responses:
+    Unauthorized:
+      description: No active session cookie (or expired).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: Authenticated but not a member of any family group.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  parameters:
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: |
+        UUID v4 sent by the frontend per form submission attempt. Backend dedupes
+        according to the polymorphic IdempotencyKey matrix:
+          - new key → process and persist (201)
+          - same key + same user + same resourceType → return original (200)
+          - same key + different user OR different resourceType → 409
+        Absent header = no dedupe (accepted but not recommended).
+    CategoryId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    #####################################################################
+    # Category resource
+    #####################################################################
+    Category:
+      type: object
+      required: [id, groupId, name, parentId, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: 1–60 characters after trim. Display name (preserves original casing).
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            `null` for root categories; UUID of the parent root for sub-categories.
+            Sub-categories cannot be parents (max depth = 2).
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CategoryCreateBody:
+      type: object
+      required: [name, parentId]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            `null` to create a root category. UUID to create a sub-category — the
+            referenced category must (a) exist in the same group, and (b) be a root
+            (its own `parentId` is null). Violations: 422 with `fieldErrors[parentId]`
+            and code `category.parent_not_root` or `category.parent_invalid`.
+
+    CategoryUpdateBody:
+      type: object
+      required: [name, parentId]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Full-body PATCH semantics (FR-012 of the spec — same as expense FR-023).
+            Role-immutability rule:
+              - root → sub: rejected (422, `category.role_immutable`)
+              - sub → root: rejected (422, `category.role_immutable`)
+            A sub-category may be moved between roots within the same group by
+            sending a different valid root UUID.
+
+    DeletePreview:
+      type: object
+      required: [subCategoriesCount, affectedExpensesCount]
+      properties:
+        subCategoriesCount:
+          type: integer
+          minimum: 0
+          description: Number of sub-categories under this category. Zero when the target is a sub-category.
+        affectedExpensesCount:
+          type: integer
+          minimum: 0
+          description: |
+            Number of expenses that currently reference this category.
+              - For a sub-category: COUNT WHERE categoryId = :id
+              - For a root: COUNT WHERE categoryId = :id OR categoryId IN sub-categories of :id
+
+    #####################################################################
+    # Expense resource (evolved with category denormalization)
+    #####################################################################
+    Expense:
+      type: object
+      required:
+        - id
+        - amountCents
+        - date
+        - description
+        - paymentMethod
+        - ownerMemberId
+        - createdById
+        - updatedById
+        - category
+        - subCategory
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        amountCents:
+          type: integer
+          minimum: 1
+          description: BRL cents.
+        date:
+          type: string
+          format: date
+          description: Civil date (no timezone). YYYY-MM-DD.
+        description:
+          type: string
+          minLength: 1
+          maxLength: 200
+        paymentMethod:
+          type: string
+          enum: [CASH_OR_DEBIT, CREDIT_CARD]
+        ownerMemberId:
+          type: string
+          format: uuid
+        createdById:
+          type: string
+          format: uuid
+          description: Write-once; set on POST from session userId.
+        updatedById:
+          type: string
+          format: uuid
+          description: Server-overwritten on every PATCH.
+        category:
+          nullable: true
+          description: |
+            **Denormalized**, server-derived. Three cases (see FR-026):
+              - A) Expense.categoryId references a root → `category = { id, name }` is that root; `subCategory = null`.
+              - B) Expense.categoryId references a sub-category → `subCategory = { id, name }` is the sub-category; `category = { id, name }` is the resolved root.
+              - C) Expense.categoryId is null → `category = null` and `subCategory = null`.
+          oneOf:
+            - type: object
+              required: [id, name]
+              properties:
+                id: { type: string, format: uuid }
+                name: { type: string }
+            - type: 'null'
+        subCategory:
+          nullable: true
+          description: |
+            Sub-category metadata when applicable (case B above). Always null when
+            `category` is null OR when the expense's category is a root.
+          oneOf:
+            - type: object
+              required: [id, name]
+              properties:
+                id: { type: string, format: uuid }
+                name: { type: string }
+            - type: 'null'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        warnings:
+          type: array
+          description: |
+            Optional list of machine-readable warning codes emitted on this write.
+            Currently the only documented code is `category.removed_concurrently`,
+            emitted when the categoryId in the body referenced a category that was
+            deleted between picker render and submit; backend retried the write with
+            categoryId = null and surfaces the warning so the frontend can show a
+            toast. Older clients can safely ignore this field.
+          items:
+            type: string
+            enum: [category.removed_concurrently]
+
+    ExpenseCreateBody:
+      type: object
+      required: [amountCents, date, description, paymentMethod, ownerMemberId, categoryId]
+      properties:
+        amountCents:
+          type: integer
+          minimum: 1
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+          minLength: 1
+          maxLength: 200
+        paymentMethod:
+          type: string
+          enum: [CASH_OR_DEBIT, CREDIT_CARD]
+        ownerMemberId:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            **Single-column design (FR-026 / clarification Q5)**. The picker UI has two
+            selectors (root + sub) but the resulting payload sends only ONE ID:
+              - nothing selected → null
+              - only root selected → root.id
+              - root + sub selected → sub.id (root is inferred server-side via parentId)
+            Sending `subCategoryId` is NOT supported (no such field).
+
+    ExpenseUpdateBody:
+      allOf:
+        - $ref: '#/components/schemas/ExpenseCreateBody'
+      description: |
+        Full-body PATCH semantics — same as ExpenseCreateBody. Non-editable
+        fields (id, groupId, createdById, createdAt, updatedById, updatedAt) are
+        ignored if sent.
+
+    #####################################################################
+    # Error envelope (extends feature 004/006 shape)
+    #####################################################################
+    ErrorEnvelope:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: |
+            Machine-readable code. New codes introduced by this feature:
+              - category.duplicate_name (422)
+              - category.role_immutable (422)
+              - category.parent_invalid (422)
+              - category.parent_not_root (422)
+              - category.not_found (404)
+              - category.has_dependencies (409)
+              - idempotency.conflict (409) — same Idempotency-Key replayed by a different user.
+              - idempotency.cross_resource_conflict (409) — same user already used this
+                Idempotency-Key for a different resourceType (e.g., attempting to reuse an
+                EXPENSE key for a CATEGORY creation).
+        message:
+          type: string
+          description: PT-BR human-friendly message.
+        fieldErrors:
+          type: array
+          description: Present only on 400/422 validation errors. One entry per invalid field.
+          items:
+            type: object
+            required: [field, code, message]
+            properties:
+              field:
+                type: string
+                description: Field path matching the request body (e.g. "name", "parentId", "categoryId").
+              code:
+                type: string
+              message:
+                type: string
+        blockers:
+          type: object
+          description: |
+            Present only on 409 `category.has_dependencies`. Same shape as DeletePreview.
+          properties:
+            subCategoriesCount:
+              type: integer
+            affectedExpensesCount:
+              type: integer
+
+#####################################################################
+# Paths
+#####################################################################
+security:
+  - sessionCookie: []
+
+paths:
+  ###################################################################
+  # Categories
+  ###################################################################
+  /api/v1/categories:
+    post:
+      tags: [categories]
+      summary: Create root or sub-category.
+      operationId: createCategory
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreateBody'
+      responses:
+        '201':
+          description: Created (new key or no idempotency header).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '200':
+          description: Idempotency replay — same key from same user; returns the originally created category.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Idempotency conflict — key already used by another user OR another resourceType.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: |
+            Validation failure. Possible codes:
+              - category.duplicate_name (DB-enforced; race-safe — caught from P2002)
+              - category.parent_invalid (parentId does not reference an existing category in same group)
+              - category.parent_not_root (parentId references a sub-category)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+    get:
+      tags: [categories]
+      summary: List all categories of the user's family group (flat).
+      operationId: listCategories
+      description: |
+        Returns the complete flat list of categories for the authenticated user's group.
+        No pagination — SC-006 caps a comfortable upper bound at 50 categories per group.
+        Ordering: `name ASC` using collation `pt_BR_ci_as`. Frontend rebuilds the tree
+        in-memory via `parentId`.
+      responses:
+        '200':
+          description: List of categories (possibly empty).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/categories/{id}:
+    parameters:
+      - $ref: '#/components/parameters/CategoryId'
+
+    get:
+      tags: [categories]
+      summary: Retrieve one category by id.
+      operationId: getCategory
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Not found OR belongs to another group (indistinguishable).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+    patch:
+      tags: [categories]
+      summary: Rename and/or move a category. Full-body semantics.
+      operationId: updateCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryUpdateBody'
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Not found OR belongs to another group.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: |
+            Validation failure. Possible codes:
+              - category.duplicate_name
+              - category.role_immutable (tried to flip root↔sub)
+              - category.parent_invalid
+              - category.parent_not_root
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+    delete:
+      tags: [categories]
+      summary: Delete a category if (and only if) no sub-category or expense references it.
+      operationId: deleteCategory
+      description: |
+        Symmetric blocking (FR-013). FK ON DELETE RESTRICT on Category.parentId and
+        Expense.categoryId is the source of truth. The use case catches P2003 and
+        re-queries the same counts the delete-preview endpoint exposes.
+      responses:
+        '204':
+          description: Deleted successfully (no dependencies).
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Not found OR belongs to another group.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: |
+            Blocked — referenced by sub-categories and/or expenses. Body has the
+            `blockers` field populated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /api/v1/categories/{id}/delete-preview:
+    parameters:
+      - $ref: '#/components/parameters/CategoryId'
+    get:
+      tags: [categories]
+      summary: Inspect what would block deleting this category.
+      operationId: previewDeleteCategory
+      description: |
+        Read-only. Used by the frontend to decide whether to render the standard
+        destructive-confirmation modal (when both counts are zero) or the blocking
+        modal with a single OK button (when either count > 0). See FR-014.
+      responses:
+        '200':
+          description: Counts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletePreview'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Not found OR belongs to another group.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  ###################################################################
+  # Expenses (evolved)
+  ###################################################################
+  /api/v1/expenses:
+    post:
+      tags: [expenses]
+      summary: Create expense — extends feature 006 with optional categoryId.
+      operationId: createExpense
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseCreateBody'
+      responses:
+        '201':
+          description: |
+            Created. Response includes denormalized `category` and `subCategory`. May
+            include `warnings: ["category.removed_concurrently"]` if the requested
+            categoryId disappeared during submit (FR-018).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '200':
+          description: Idempotency replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Idempotency conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Validation failure (any field).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+    get:
+      tags: [expenses]
+      summary: List expenses with cursor pagination — now with denormalized category info.
+      operationId: listExpenses
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50, minimum: 1, maximum: 100 }
+        - in: query
+          name: cursor
+          schema: { type: string }
+          description: Opaque cursor token returned by the previous page.
+      responses:
+        '200':
+          description: Page of expenses.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, nextCursor]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Expense' }
+                  nextCursor:
+                    type: string
+                    nullable: true
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/expenses/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+
+    get:
+      tags: [expenses]
+      summary: Get one expense by id.
+      operationId: getExpense
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expense' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Not found OR belongs to another group.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+    patch:
+      tags: [expenses]
+      summary: Full-body PATCH — extends feature 006 with optional categoryId.
+      operationId: updateExpense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExpenseUpdateBody' }
+      responses:
+        '200':
+          description: Updated. May include `warnings`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expense' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Not found OR belongs to another group.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '422':
+          description: Validation failure.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+    delete:
+      tags: [expenses]
+      summary: Delete one expense.
+      operationId: deleteExpense
+      responses:
+        '204':
+          description: Deleted.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Not found OR belongs to another group OR already deleted (idempotent).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+

@@ -1,5 +1,10 @@
 import type { ExpenseWithOwner } from '../../domain/expense/expense.repository';
 
+export interface CategoryRefResponse {
+  id: string;
+  name: string;
+}
+
 export interface ExpenseResponse {
   id: string;
   groupId: string;
@@ -11,8 +16,11 @@ export interface ExpenseResponse {
   ownerMember: { id: string; name: string; isExMember: boolean };
   createdById: string;
   updatedById: string;
+  category: CategoryRefResponse | null;
+  subCategory: CategoryRefResponse | null;
   createdAt: string;
   updatedAt: string;
+  warnings?: string[];
 }
 
 function toIsoDate(d: Date): string {
@@ -22,8 +30,34 @@ function toIsoDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export function mapExpenseToResponse(expense: ExpenseWithOwner, groupId: string): ExpenseResponse {
+/**
+ * Resolves the denormalized category path (FR-026):
+ *   - A) categoryId references a root → category = that root; subCategory = null
+ *   - B) categoryId references a sub  → subCategory = it; category = its parent root
+ *   - C) categoryId is null           → both null
+ */
+function resolveCategoryPath(expense: ExpenseWithOwner): {
+  category: CategoryRefResponse | null;
+  subCategory: CategoryRefResponse | null;
+} {
+  const c = expense.category;
+  if (!c) return { category: null, subCategory: null };
+  if (c.parentId === null) {
+    return { category: { id: c.id, name: c.name }, subCategory: null };
+  }
   return {
+    category: c.parent ? { id: c.parent.id, name: c.parent.name } : null,
+    subCategory: { id: c.id, name: c.name },
+  };
+}
+
+export function mapExpenseToResponse(
+  expense: ExpenseWithOwner,
+  groupId: string,
+  warnings?: string[],
+): ExpenseResponse {
+  const { category, subCategory } = resolveCategoryPath(expense);
+  const response: ExpenseResponse = {
     id: expense.id,
     groupId: expense.groupId,
     amountCents: expense.amountCents,
@@ -38,7 +72,11 @@ export function mapExpenseToResponse(expense: ExpenseWithOwner, groupId: string)
     },
     createdById: expense.createdById,
     updatedById: expense.updatedById,
+    category,
+    subCategory,
     createdAt: expense.createdAt.toISOString(),
     updatedAt: expense.updatedAt.toISOString(),
   };
+  if (warnings && warnings.length > 0) response.warnings = warnings;
+  return response;
 }

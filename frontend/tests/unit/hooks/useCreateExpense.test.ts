@@ -135,6 +135,25 @@ describe('useCreateExpense', () => {
     expect(result.current.fieldErrors).toEqual([]);
   });
 
+  it('forwards categoryId in the submitted body', async () => {
+    createMock.mockResolvedValue(mockExpense());
+    const { result } = renderHook(() => useCreateExpense());
+    await act(async () => {
+      await result.current.submit({ ...body, categoryId: 'cat-1' });
+    });
+    expect(createMock.mock.calls[0]![0]).toMatchObject({ categoryId: 'cat-1' });
+  });
+
+  it('invokes onConcurrentCategoryRemoval when the response carries the warning (FR-018)', async () => {
+    createMock.mockResolvedValue({ ...mockExpense(), warnings: ['category.removed_concurrently'] });
+    const onConcurrentCategoryRemoval = jest.fn();
+    const { result } = renderHook(() => useCreateExpense({ onConcurrentCategoryRemoval }));
+    await act(async () => {
+      await result.current.submit(body);
+    });
+    expect(onConcurrentCategoryRemoval).toHaveBeenCalled();
+  });
+
   it('blocks concurrent submits while isSaving', async () => {
     let resolveCreate!: (v: Expense) => void;
     createMock.mockImplementationOnce(() => new Promise<Expense>((res) => (resolveCreate = res)));

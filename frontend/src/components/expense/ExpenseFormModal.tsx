@@ -3,7 +3,10 @@ import { X } from 'lucide-react';
 import { MoneyInput } from './MoneyInput';
 import { OwnerMemberPicker } from './OwnerMemberPicker';
 import { PaymentMethodPicker } from './PaymentMethodPicker';
+import { RootCategoryPicker } from './RootCategoryPicker';
+import { SubCategoryPicker } from './SubCategoryPicker';
 import type { CreateExpenseBody, Expense, FieldError, PaymentMethod } from '../../types/expense';
+import type { Category } from '../../types/category';
 import type { GroupMember } from '../../services/group.service';
 
 const HIGH_VALUE_THRESHOLD_CENTS = 100_000_000; // R$ 1.000.000,00
@@ -17,6 +20,10 @@ export interface ExpenseFormModalProps {
   fieldErrors?: FieldError[];
   /** When true, replaces the form with a concurrent-deletion notice. */
   concurrencyError?: boolean;
+  /** Root categories for the picker (FR-007). Empty triggers the FR-025 hint. */
+  roots?: Category[];
+  /** Sub-categories grouped by their root id. */
+  subsByRoot?: Map<string, Category[]>;
   onClose: () => void;
   onSubmit: (body: CreateExpenseBody) => Promise<void> | void;
 }
@@ -38,6 +45,8 @@ export function ExpenseFormModal({
   isSaving,
   fieldErrors,
   concurrencyError,
+  roots = [],
+  subsByRoot,
   onClose,
   onSubmit,
 }: ExpenseFormModalProps) {
@@ -46,6 +55,8 @@ export function ExpenseFormModal({
   const [description, setDescription] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH_OR_DEBIT');
   const [ownerMemberId, setOwnerMemberId] = useState('');
+  const [selectedRootId, setSelectedRootId] = useState<string | null>(null);
+  const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [highValueConfirmOpen, setHighValueConfirmOpen] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -58,12 +69,17 @@ export function ExpenseFormModal({
       setDescription(initial.description);
       setPaymentMethod(initial.paymentMethod);
       setOwnerMemberId(initial.ownerMemberId);
+      // Derive the two selectors from the denormalized category/subCategory.
+      setSelectedRootId(initial.category?.id ?? null);
+      setSelectedSubId(initial.subCategory?.id ?? null);
     } else {
       setAmountCents(0);
       setDate(todayIso());
       setDescription('');
       setPaymentMethod('CASH_OR_DEBIT');
       setOwnerMemberId(members[0]?.id ?? '');
+      setSelectedRootId(null);
+      setSelectedSubId(null);
     }
     setLocalError(null);
     setHighValueConfirmOpen(false);
@@ -100,8 +116,17 @@ export function ExpenseFormModal({
       description: description.trim(),
       paymentMethod,
       ownerMemberId,
+      // Single-column design (FR-008): the sub wins, else the root, else none.
+      categoryId: selectedSubId ?? selectedRootId ?? null,
     };
   }
+
+  function handleRootChange(value: string | null): void {
+    setSelectedRootId(value);
+    setSelectedSubId(null); // changing root invalidates any selected sub
+  }
+
+  const subsForSelectedRoot = selectedRootId ? (subsByRoot?.get(selectedRootId) ?? []) : [];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -267,6 +292,50 @@ export function ExpenseFormModal({
               </p>
             )}
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label
+                htmlFor="expense-root-category"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Categoria
+              </label>
+              <RootCategoryPicker
+                id="expense-root-category"
+                value={selectedRootId}
+                roots={roots}
+                onChange={handleRootChange}
+                disabled={isSaving}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="expense-sub-category"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Sub-categoria
+              </label>
+              <SubCategoryPicker
+                id="expense-sub-category"
+                rootId={selectedRootId}
+                subs={subsForSelectedRoot}
+                value={selectedSubId}
+                onChange={setSelectedSubId}
+                disabled={isSaving}
+              />
+            </div>
+          </div>
+
+          {roots.length === 0 && (
+            <p className="text-xs text-gray-500">
+              Cadastre categorias em{' '}
+              <a href="/categorias" className="font-medium text-teal-600 hover:underline">
+                Categorias
+              </a>
+              .
+            </p>
+          )}
 
           {localError && (
             <p className="text-sm text-red-600" role="alert">

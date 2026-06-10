@@ -123,7 +123,8 @@ describe('POST /api/v1/expenses', () => {
       data: {
         key: 'a2c1d4b6-1111-4abc-8def-1234567890ab',
         userId: 'user-ana',
-        expenseId: 'exp-1',
+        resourceType: 'EXPENSE',
+        resourceId: 'exp-1',
       },
     });
   });
@@ -133,7 +134,8 @@ describe('POST /api/v1/expenses', () => {
     idempotency.findUnique.mockResolvedValue({
       key: 'a2c1d4b6-1111-4abc-8def-1234567890ab',
       userId: 'user-ana',
-      expenseId: 'exp-original',
+      resourceType: 'EXPENSE',
+      resourceId: 'exp-original',
       createdAt: new Date(),
     });
     expense.findUnique.mockResolvedValue(mockCreatedExpense({ id: 'exp-original' }));
@@ -152,7 +154,8 @@ describe('POST /api/v1/expenses', () => {
     idempotency.findUnique.mockResolvedValue({
       key: 'a2c1d4b6-1111-4abc-8def-1234567890ab',
       userId: 'other-user',
-      expenseId: 'exp-x',
+      resourceType: 'EXPENSE',
+      resourceId: 'exp-x',
       createdAt: new Date(),
     });
 
@@ -161,7 +164,25 @@ describe('POST /api/v1/expenses', () => {
       .send(validBody);
 
     expect(res.status).toBe(409);
-    expect(res.body.code).toBe('idempotency_key_conflict');
+    expect(res.body.code).toBe('idempotency.conflict');
+  });
+
+  it('returns 409 cross_resource_conflict when same user reused the key for a CATEGORY', async () => {
+    setupAuthedMember();
+    idempotency.findUnique.mockResolvedValue({
+      key: 'a2c1d4b6-1111-4abc-8def-1234567890ab',
+      userId: 'user-ana',
+      resourceType: 'CATEGORY',
+      resourceId: 'cat-x',
+      createdAt: new Date(),
+    });
+
+    const res = await authedRequest()
+      .set('Idempotency-Key', 'a2c1d4b6-1111-4abc-8def-1234567890ab')
+      .send(validBody);
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('idempotency.cross_resource_conflict');
   });
 
   it('returns 400 with fieldErrors when amountCents is zero', async () => {
@@ -219,6 +240,93 @@ describe('POST /api/v1/expenses', () => {
     const res = await authedRequest().send(validBody);
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('no_group');
+  });
+
+  const CAT_ID = 'cccccccc-1111-4abc-8def-111111111111';
+
+  it('returns 201 with denormalized category when categoryId references a root', async () => {
+    setupAuthedMember();
+    setupOwnerInGroup();
+    expense.create.mockResolvedValue(
+      mockCreatedExpense({
+        category: { id: 'r1', name: 'Alimentação', parentId: null, parent: null },
+      }),
+    );
+    tx.mockImplementation((cb: (c: unknown) => Promise<unknown>) =>
+      cb(prisma as unknown as object),
+    );
+
+    const res = await authedRequest().send({ ...validBody, categoryId: CAT_ID });
+
+    expect(res.status).toBe(201);
+    expect(res.body.category).toEqual({ id: 'r1', name: 'Alimentação' });
+    expect(res.body.subCategory).toBeNull();
+    expect(expense.create.mock.calls[0]![0].data.categoryId).toBe(CAT_ID);
+  });
+
+  it('returns 201 with category=root and subCategory=sub when categoryId references a sub', async () => {
+    setupAuthedMember();
+    setupOwnerInGroup();
+    expense.create.mockResolvedValue(
+      mockCreatedExpense({
+        category: {
+          id: 's1',
+          name: 'Mercado',
+          parentId: 'r1',
+          parent: { id: 'r1', name: 'Alimentação' },
+        },
+      }),
+    );
+    tx.mockImplementation((cb: (c: unknown) => Promise<unknown>) =>
+      cb(prisma as unknown as object),
+    );
+
+    const res = await authedRequest().send({ ...validBody, categoryId: CAT_ID });
+
+    expect(res.status).toBe(201);
+    expect(res.body.category).toEqual({ id: 'r1', name: 'Alimentação' });
+    expect(res.body.subCategory).toEqual({ id: 's1', name: 'Mercado' });
+  });
+
+  it('returns 201 with both null when categoryId is null', async () => {
+    setupAuthedMember();
+    setupOwnerInGroup();
+    expense.create.mockResolvedValue(mockCreatedExpense({ category: null }));
+    tx.mockImplementation((cb: (c: unknown) => Promise<unknown>) =>
+      cb(prisma as unknown as object),
+    );
+
+    const res = await authedRequest().send({ ...validBody, categoryId: null });
+
+    expect(res.status).toBe(201);
+    expect(res.body.category).toBeNull();
+    expect(res.body.subCategory).toBeNull();
+  });
+
+  it('returns 400 when categoryId is a malformed UUID', async () => {
+    setupAuthedMember();
+    const res = await authedRequest().send({ ...validBody, categoryId: 'not-a-uuid' });
+    expect(res.status).toBe(400);
+    expect(res.body.fieldErrors[0].field).toBe('categoryId');
+  });
+
+  it('retries with categoryId=null and warns when the category was removed concurrently (FR-018)', async () => {
+    setupAuthedMember();
+    setupOwnerInGroup();
+    expense.create
+      .mockRejectedValueOnce({ code: 'P2003', meta: { field_name: 'Expense_categoryId_fkey' } })
+      .mockResolvedValueOnce(mockCreatedExpense({ category: null }));
+    tx.mockImplementation((cb: (c: unknown) => Promise<unknown>) =>
+      cb(prisma as unknown as object),
+    );
+
+    const res = await authedRequest().send({ ...validBody, categoryId: CAT_ID });
+
+    expect(res.status).toBe(201);
+    expect(res.body.category).toBeNull();
+    expect(res.body.warnings).toEqual(['category.removed_concurrently']);
+    expect(expense.create).toHaveBeenCalledTimes(2);
+    expect(expense.create.mock.calls[1]![0].data.categoryId).toBeNull();
   });
 
   it('serializes ownerMember.isExMember=true when owner left the group', async () => {

@@ -89,4 +89,39 @@ describe('updateExpenseUseCase', () => {
     expect(data.description).toBe('Atualizado');
     expect((data.date as Date).toISOString()).toBe('2026-05-21T00:00:00.000Z');
   });
+
+  it('passes categoryId through to prisma.update', async () => {
+    expense.findFirst.mockResolvedValue(existing());
+    user.findFirst.mockResolvedValue({ id: 'm-2' });
+    expense.update.mockResolvedValue(existing());
+
+    const result = await updateExpenseUseCase({
+      userId: 'user-bruno',
+      groupId: 'g-1',
+      id: 'exp-1',
+      body: { ...body, categoryId: 'cat-9' },
+    });
+
+    expect(expense.update.mock.calls[0]![0].data.categoryId).toBe('cat-9');
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('retries with categoryId=null and warns on P2003 (FR-018)', async () => {
+    expense.findFirst.mockResolvedValue(existing());
+    user.findFirst.mockResolvedValue({ id: 'm-2' });
+    expense.update
+      .mockRejectedValueOnce({ code: 'P2003', meta: { field_name: 'Expense_categoryId_fkey' } })
+      .mockResolvedValueOnce(existing());
+
+    const result = await updateExpenseUseCase({
+      userId: 'user-bruno',
+      groupId: 'g-1',
+      id: 'exp-1',
+      body: { ...body, categoryId: 'cat-9' },
+    });
+
+    expect(result.warnings).toEqual(['category.removed_concurrently']);
+    expect(expense.update).toHaveBeenCalledTimes(2);
+    expect(expense.update.mock.calls[1]![0].data.categoryId).toBeNull();
+  });
 });

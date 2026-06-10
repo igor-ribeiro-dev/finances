@@ -127,3 +127,99 @@ describe('ExpenseFormModal concurrency notice', () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+describe('ExpenseFormModal category pickers (US2)', () => {
+  const root = {
+    id: 'r1',
+    groupId: 'g',
+    name: 'Alimentação',
+    parentId: null,
+    createdAt: '',
+    updatedAt: '',
+  };
+  const root2 = {
+    id: 'r2',
+    groupId: 'g',
+    name: 'Transporte',
+    parentId: null,
+    createdAt: '',
+    updatedAt: '',
+  };
+  const sub = {
+    id: 's1',
+    groupId: 'g',
+    name: 'Mercado',
+    parentId: 'r1',
+    createdAt: '',
+    updatedAt: '',
+  };
+  const subsByRoot = new Map([['r1', [sub]]]);
+
+  function fillRequired(): void {
+    // MoneyInput accumulates digits via keyDown (1000 cents = R$ 10,00).
+    for (const key of ['1', '0', '0', '0']) {
+      fireEvent.keyDown(screen.getByLabelText('Valor'), { key });
+    }
+    fireEvent.change(screen.getByLabelText('Descrição'), { target: { value: 'Compra' } });
+  }
+
+  it('renders both pickers, with the sub picker disabled until a root is chosen', () => {
+    render(<ExpenseFormModal {...defaultProps({ roots: [root], subsByRoot })} />);
+    expect(screen.getByLabelText('Categoria')).toBeInTheDocument();
+    expect(screen.getByLabelText('Sub-categoria')).toBeDisabled();
+  });
+
+  it('enables the sub picker after selecting a root and resets sub when the root changes', () => {
+    render(<ExpenseFormModal {...defaultProps({ roots: [root, root2], subsByRoot })} />);
+    fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: 'r1' } });
+    const subPicker = screen.getByLabelText('Sub-categoria') as HTMLSelectElement;
+    expect(subPicker).not.toBeDisabled();
+    expect(screen.getByRole('option', { name: 'Mercado' })).toBeInTheDocument();
+
+    fireEvent.change(subPicker, { target: { value: 's1' } });
+    expect(subPicker.value).toBe('s1');
+    // Switching root clears the sub selection
+    fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: 'r2' } });
+    expect((screen.getByLabelText('Sub-categoria') as HTMLSelectElement).value).toBe('');
+  });
+
+  it('maps nothing-selected to categoryId null', async () => {
+    const onSubmit = jest.fn();
+    render(<ExpenseFormModal {...defaultProps({ roots: [root], subsByRoot, onSubmit })} />);
+    fillRequired();
+    fireEvent.submit(screen.getByLabelText('Valor').closest('form')!);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]![0].categoryId).toBeNull();
+  });
+
+  it('maps root-only to the root id', async () => {
+    const onSubmit = jest.fn();
+    render(<ExpenseFormModal {...defaultProps({ roots: [root], subsByRoot, onSubmit })} />);
+    fillRequired();
+    fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: 'r1' } });
+    fireEvent.submit(screen.getByLabelText('Valor').closest('form')!);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]![0].categoryId).toBe('r1');
+  });
+
+  it('maps root+sub to the SUB id (single-column design)', async () => {
+    const onSubmit = jest.fn();
+    render(<ExpenseFormModal {...defaultProps({ roots: [root], subsByRoot, onSubmit })} />);
+    fillRequired();
+    fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: 'r1' } });
+    fireEvent.change(screen.getByLabelText('Sub-categoria'), { target: { value: 's1' } });
+    fireEvent.submit(screen.getByLabelText('Valor').closest('form')!);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]![0].categoryId).toBe('s1');
+  });
+
+  it('shows the FR-025 hint (link to /categorias) when there are no roots, and no inline create trigger (FR-023)', () => {
+    render(<ExpenseFormModal {...defaultProps({ roots: [], subsByRoot: new Map() })} />);
+    const link = screen.getByRole('link', { name: /categorias/i });
+    expect(link).toHaveAttribute('href', '/categorias');
+    expect(screen.getByLabelText('Sub-categoria')).toBeDisabled();
+    // Negative-space: no category-creation affordance inside the expense modal
+    expect(screen.queryByRole('button', { name: /nova categoria/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^\+ ?nova categoria$/i })).not.toBeInTheDocument();
+  });
+});
