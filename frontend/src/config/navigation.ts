@@ -38,7 +38,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Orçamentos',
     path: '/orcamentos',
     icon: PiggyBank,
-    status: 'coming-soon',
+    status: 'active',
   },
   {
     id: 'pagamentos',
