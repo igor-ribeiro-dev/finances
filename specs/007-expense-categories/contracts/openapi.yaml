@@ -309,6 +309,10 @@ components:
               - category.parent_not_root (422)
               - category.not_found (404)
               - category.has_dependencies (409)
+              - idempotency.conflict (409) — same Idempotency-Key replayed by a different user.
+              - idempotency.cross_resource_conflict (409) — same user already used this
+                Idempotency-Key for a different resourceType (e.g., attempting to reuse an
+                EXPENSE key for a CATEGORY creation).
         message:
           type: string
           description: PT-BR human-friendly message.
