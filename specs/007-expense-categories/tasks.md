@@ -299,7 +299,7 @@ description: "Task list for feature 007 — Categorias de Despesas"
 
 - [X] T093 Smoke test manual em dev seguindo `specs/007-expense-categories/quickstart.md` §3 (passos 3.1 a 3.10). Tira screenshots dos 4 estados-chave: empty state de categorias, modal de criação com parent picker, modal bloqueante de delete, etiqueta de categoria na listagem de despesas. Anexar ao PR.
 
-- [ ] T094 Verificar acessibilidade dos novos modais: rodar axe-core (ou inspeção manual via React DevTools + DevTools accessibility tree) em `CategoryFormModal` e `DeleteCategoryModal` (ambas variantes) — focus trap correto, ESC funcional, aria-modal/aria-labelledby presentes.
+- [X] T094 Verificar acessibilidade dos novos modais: rodar axe-core (ou inspeção manual via React DevTools + DevTools accessibility tree) em `CategoryFormModal` e `DeleteCategoryModal` (ambas variantes) — focus trap correto, ESC funcional, aria-modal/aria-labelledby presentes.
 
 - [X] T095 Atualizar PR description com checklist de FRs cobertas (espelhar tabela em `specs/007-expense-categories/quickstart.md §5`) e referência ao plano + clarification sessions.
 
