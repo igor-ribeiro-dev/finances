@@ -1,0 +1,363 @@
+openapi: 3.1.0
+info:
+  title: Finances API — Budgets module
+  version: 1.0.0-008
+  description: |
+    HTTP contract for feature 008 (Gestão de Orçamentos).
+
+    Covers 3 new endpoints under /api/v1/budgets:
+      - GET  /api/v1/budgets?month=YYYY-MM        → aggregated month picture
+      - PUT  /api/v1/budgets?month=YYYY-MM        → bulk upsert (zero/null removes a target)
+      - POST /api/v1/budgets/copy                 → non-destructive copy from previous month
+
+    Three budget dimensions: FAMILY (global, always ABSOLUTE), MEMBER, CATEGORY
+    (root or sub). MEMBER and CATEGORY accept ABSOLUTE (cents) or PERCENT (integer).
+    Percent bases: member/root → family budget; sub-category → parent root's resolved
+    value. resolvedCents is computed server-side (never persisted); null = "not
+    resolvable" because the base is missing (FR-022). Over-allocation produces
+    advisory `warnings` (never blocks saving — FR-009).
+
+    All endpoints require an active session cookie (feature 004) and group
+    membership (feature 006). Every request is scoped to the user's family group;
+    cross-group members/categories are indistinguishable from non-existent (404).
+
+    No existing endpoint/contract is modified. FR-025 (prompt to copy previous
+    month when registering an expense in a budget-less month) is frontend
+    orchestration over these endpoints + the existing expense endpoints.
+  contact:
+    name: Família app — backend
+servers:
+  - url: http://localhost:3000
+    description: Local dev
+  - url: https://app.familia.example/api
+    description: Production (TBD)
+tags:
+  - name: budgets
+    description: Define and manage the family group's monthly budgets.
+
+#####################################################################
+# Security
+#####################################################################
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sid
+      description: Session cookie set by /api/v1/auth/login. Required on every endpoint.
+
+  parameters:
+    MonthQuery:
+      in: query
+      name: month
+      required: true
+      schema:
+        type: string
+        pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+        example: '2026-06'
+      description: Calendar month in YYYY-MM. Maps to the first day of the month server-side.
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: |
+        Optional, accepted but not required. POST /copy is **naturally idempotent**
+        because it is non-destructive (fills only empty targets): a repeated call
+        copies nothing new and returns copiedCount=0. No IdempotencyKey persistence
+        is involved (the ResourceType enum is NOT extended for budgets).
+
+  responses:
+    Unauthorized:
+      description: No active session cookie (or expired).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: Authenticated but not a member of any family group.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    ValidationError:
+      description: Body or query failed validation. `fieldErrors` lists per-field messages (PT-BR).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code.
+          examples: ['budget.invalid_month', 'budget.target_not_found', 'budget.invalid_percent', 'validation_error']
+        message:
+          type: string
+          description: Human-readable message in PT-BR.
+        fieldErrors:
+          type: array
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field: { type: string }
+              message: { type: string }
+
+    LimitType:
+      type: string
+      enum: [ABSOLUTE, PERCENT]
+
+    # ---- Input limit (one of amountCents / percent, per limitType) ----
+    LimitInput:
+      type: object
+      required: [limitType]
+      description: |
+        A limit value. limitType=ABSOLUTE requires amountCents (>0); limitType=PERCENT
+        requires percent (integer >0). To CLEAR a target, send null for the whole target
+        entry (see PUT body) — do not send zero.
+      properties:
+        limitType: { $ref: '#/components/schemas/LimitType' }
+        amountCents:
+          type: integer
+          minimum: 1
+          maximum: 2000000000
+          description: Required iff limitType=ABSOLUTE. Cents.
+        percent:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: Required iff limitType=PERCENT. Whole number only (no decimals). >100 allowed (advisory only).
+
+    # ---- Output limit (adds server-resolved value) ----
+    ResolvedLimit:
+      type: object
+      required: [limitType, resolvedCents]
+      properties:
+        limitType: { $ref: '#/components/schemas/LimitType' }
+        amountCents:
+          type: [integer, 'null']
+          description: Present when limitType=ABSOLUTE.
+        percent:
+          type: [integer, 'null']
+          description: Present when limitType=PERCENT.
+        resolvedCents:
+          type: [integer, 'null']
+          description: Effective value in cents (half-up). null = not resolvable (missing base, FR-022).
+
+    MemberBudget:
+      type: object
+      required: [memberId, name, budget]
+      properties:
+        memberId: { type: string, format: uuid }
+        name: { type: string, description: Member display name (PT-BR). }
+        budget:
+          oneOf:
+            - { $ref: '#/components/schemas/ResolvedLimit' }
+            - type: 'null'
+          description: null when this member has no budget for the month.
+
+    CategoryBudget:
+      type: object
+      required: [categoryId, name, parentId, budget]
+      properties:
+        categoryId: { type: string, format: uuid }
+        name: { type: string }
+        parentId:
+          type: [string, 'null']
+          description: null for root categories; root id for sub-categories.
+        budget:
+          oneOf:
+            - { $ref: '#/components/schemas/ResolvedLimit' }
+            - type: 'null'
+          description: null when this category has no budget for the month.
+
+    AllocationSummary:
+      type: object
+      required: [familyAmountCents, totalAllocatedCents, unallocatedCents]
+      properties:
+        familyAmountCents: { type: [integer, 'null'] }
+        totalAllocatedCents:
+          type: integer
+          description: Sum of resolved limits of ROOT categories (sub-categories excluded).
+        unallocatedCents:
+          type: integer
+          description: familyAmountCents - totalAllocatedCents (negative = over-allocated).
+        allocatedPercent: { type: [integer, 'null'] }
+        unallocatedPercent: { type: [integer, 'null'] }
+
+    Warning:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          enum: [category.allocation_exceeds_family, subcategory.exceeds_root]
+        categoryId:
+          type: string
+          description: Present for subcategory.exceeds_root (the offending root).
+
+    MonthBudget:
+      type: object
+      required: [month, family, members, categories, summary, warnings]
+      description: Full budget picture for one month.
+      properties:
+        month: { type: string, example: '2026-06' }
+        family:
+          oneOf:
+            - { $ref: '#/components/schemas/ResolvedLimit' }
+            - type: 'null'
+          description: Always ABSOLUTE when present; null when not defined. It is the base for percentages.
+        members:
+          type: array
+          items: { $ref: '#/components/schemas/MemberBudget' }
+          description: One entry per CURRENT group member (ex-members excluded).
+        categories:
+          type: array
+          items: { $ref: '#/components/schemas/CategoryBudget' }
+          description: Flat list, roots + subs, alphabetical (pt-BR collation); use parentId to nest.
+        summary: { $ref: '#/components/schemas/AllocationSummary' }
+        warnings:
+          type: array
+          items: { $ref: '#/components/schemas/Warning' }
+
+    # ---- PUT body ----
+    UpsertMonthBudget:
+      type: object
+      description: |
+        Bulk upsert for the month. Only targets PRESENT in the body are affected
+        (others are untouched — preserves concurrent edits). Send null for a target
+        to REMOVE it (FR-008). Omit a key to leave it unchanged.
+      properties:
+        family:
+          oneOf:
+            - allOf:
+                - $ref: '#/components/schemas/LimitInput'
+                - properties: { limitType: { enum: [ABSOLUTE] } }
+            - type: 'null'
+          description: ABSOLUTE only. null removes the family budget.
+        members:
+          type: array
+          items:
+            type: object
+            required: [memberId, budget]
+            properties:
+              memberId: { type: string, format: uuid }
+              budget:
+                oneOf:
+                  - { $ref: '#/components/schemas/LimitInput' }
+                  - type: 'null'
+        categories:
+          type: array
+          items:
+            type: object
+            required: [categoryId, budget]
+            properties:
+              categoryId: { type: string, format: uuid }
+              budget:
+                oneOf:
+                  - { $ref: '#/components/schemas/LimitInput' }
+                  - type: 'null'
+
+    CopyMonthBudget:
+      type: object
+      required: [fromMonth, toMonth]
+      properties:
+        fromMonth: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$', example: '2026-05' }
+        toMonth: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$', example: '2026-06' }
+
+    CopyResult:
+      allOf:
+        - $ref: '#/components/schemas/MonthBudget'
+        - type: object
+          required: [copiedCount]
+          properties:
+            copiedCount:
+              type: integer
+              description: Number of targets actually copied (only previously-empty targets in toMonth).
+
+security:
+  - sessionCookie: []
+
+#####################################################################
+# Paths
+#####################################################################
+paths:
+  /api/v1/budgets:
+    get:
+      tags: [budgets]
+      summary: Get the aggregated budget picture for a month
+      parameters:
+        - $ref: '#/components/parameters/MonthQuery'
+      responses:
+        '200':
+          description: Month budget (family + members + categories + summary + warnings).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonthBudget' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [budgets]
+      summary: Bulk upsert budgets for a month (zero/null removes a target)
+      parameters:
+        - $ref: '#/components/parameters/MonthQuery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpsertMonthBudget' }
+      responses:
+        '200':
+          description: Persisted state of the month, with recomputed advisory warnings.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonthBudget' }
+        '400':
+          description: |
+            Validation error. Codes include `budget.invalid_month`,
+            `budget.invalid_percent` (non-integer or negative), `validation_error`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: A referenced memberId/categoryId does not belong to the group (indistinguishable from non-existent). Code `budget.target_not_found`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /api/v1/budgets/copy:
+    post:
+      tags: [budgets]
+      summary: Non-destructively copy budgets from the previous month
+      description: |
+        Copies family + member + category budgets (including their limitType) from
+        fromMonth into toMonth, filling ONLY targets that have no budget in toMonth
+        (FR-014). Existing toMonth budgets are preserved. Returns the resulting month
+        picture plus copiedCount. If fromMonth has no budgets, copiedCount=0.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CopyMonthBudget' }
+      responses:
+        '200':
+          description: Resulting toMonth picture after the non-destructive copy.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CopyResult' }
+        '400':
+          description: Invalid months. Code `budget.invalid_month`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }

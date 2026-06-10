@@ -19,6 +19,7 @@ model User {
   expensesEdited   Expense[]            @relation("ExpenseEditor")
   expensesOwned    Expense[]            @relation("ExpenseOwner")
   idempotencyKeys  IdempotencyKey[]
+  memberBudgets    Budget[]             @relation("MemberBudget")
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
 }
@@ -30,6 +31,7 @@ model FamilyGroup {
   invite     Invite?
   expenses   Expense[]
   categories Category[]
+  budgets    Budget[]
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 }
@@ -44,43 +46,55 @@ enum ResourceType {
   CATEGORY
 }
 
+enum BudgetTargetType {
+  FAMILY
+  MEMBER
+  CATEGORY
+}
+
+enum BudgetLimitType {
+  ABSOLUTE
+  PERCENT
+}
+
 model Category {
-  id          String      @id @default(uuid())
-  groupId     String
-  group       FamilyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  name        String      @db.VarChar(60)
-  parentId    String?
-  parent      Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children    Category[]  @relation("CategoryHierarchy")
-  expenses    Expense[]
+  id             String      @id @default(uuid())
+  groupId        String
+  group          FamilyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name           String      @db.VarChar(60)
+  parentId       String?
+  parent         Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children       Category[]  @relation("CategoryHierarchy")
+  expenses       Expense[]
+  budgets        Budget[]
   // normalizedName is a Postgres GENERATED ALWAYS column (declared in raw SQL,
   // collated pt_BR_ci_as). It backs the two partial unique indexes. The Prisma
   // client never reads or writes it — hence @ignore.
-  normalizedName String   @ignore
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  normalizedName String      @ignore
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   @@index([groupId], map: "category_group_idx")
 }
 
 model Expense {
-  id              String           @id @default(uuid())
-  groupId         String
-  group           FamilyGroup      @relation(fields: [groupId], references: [id])
-  amountCents     Int
-  date            DateTime         @db.Date
-  description     String           @db.VarChar(200)
-  paymentMethod   PaymentMethod
-  ownerMemberId   String
-  ownerMember     User             @relation("ExpenseOwner", fields: [ownerMemberId], references: [id])
-  createdById     String
-  createdBy       User             @relation("ExpenseAuthor", fields: [createdById], references: [id])
-  updatedById     String
-  updatedBy       User             @relation("ExpenseEditor", fields: [updatedById], references: [id])
-  categoryId      String?
-  category        Category?        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id            String        @id @default(uuid())
+  groupId       String
+  group         FamilyGroup   @relation(fields: [groupId], references: [id])
+  amountCents   Int
+  date          DateTime      @db.Date
+  description   String        @db.VarChar(200)
+  paymentMethod PaymentMethod
+  ownerMemberId String
+  ownerMember   User          @relation("ExpenseOwner", fields: [ownerMemberId], references: [id])
+  createdById   String
+  createdBy     User          @relation("ExpenseAuthor", fields: [createdById], references: [id])
+  updatedById   String
+  updatedBy     User          @relation("ExpenseEditor", fields: [updatedById], references: [id])
+  categoryId    String?
+  category      Category?     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@index([groupId, date(sort: Desc), id(sort: Desc)], map: "expense_group_date_id_idx")
   @@index([categoryId], map: "expense_category_idx")
@@ -99,13 +113,36 @@ model IdempotencyKey {
   @@index([resourceType, resourceId], map: "idempotency_resource_idx")
 }
 
+model Budget {
+  id               String           @id @default(uuid())
+  groupId          String
+  group            FamilyGroup      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  // Calendar month bucket — normalized to the first day of the month (YYYY-MM-01, UTC).
+  month            DateTime         @db.Date
+  targetType       BudgetTargetType
+  targetMemberId   String?
+  targetMember     User?            @relation("MemberBudget", fields: [targetMemberId], references: [id], onDelete: Cascade)
+  targetCategoryId String?
+  targetCategory   Category?        @relation(fields: [targetCategoryId], references: [id], onDelete: Cascade)
+  limitType        BudgetLimitType
+  // Exactly one of amountCents (ABSOLUTE) / percent (PERCENT) is set; enforced in the app layer.
+  amountCents      Int?
+  percent          Int?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  // The three partial UNIQUE indexes ("one budget per group/month/target") are
+  // declared in raw SQL in the migration (Prisma cannot express WHERE on @@unique).
+  @@index([groupId, month], map: "budget_group_month_idx")
+}
+
 model Invite {
-  id             String      @id @default(uuid())
-  familyGroupId  String      @unique
-  familyGroup    FamilyGroup @relation(fields: [familyGroupId], references: [id])
-  code           String      @unique @db.VarChar(8)
-  expiresAt      DateTime
-  createdAt      DateTime    @default(now())
+  id            String      @id @default(uuid())
+  familyGroupId String      @unique
+  familyGroup   FamilyGroup @relation(fields: [familyGroupId], references: [id])
+  code          String      @unique @db.VarChar(8)
+  expiresAt     DateTime
+  createdAt     DateTime    @default(now())
 }
 
 model Session {

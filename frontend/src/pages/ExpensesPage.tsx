@@ -9,6 +9,8 @@ import { useExpensesList } from '../hooks/useExpensesList';
 import { useUpdateExpense } from '../hooks/useUpdateExpense';
 import { useDeleteExpense } from '../hooks/useDeleteExpense';
 import { useCategoriesList } from '../hooks/useCategoriesList';
+import { useBudgetCopyPrompt } from '../hooks/useBudgetCopyPrompt';
+import { CopyPreviousMonthDialog } from '../components/budget/CopyPreviousMonthDialog';
 import { Toast, type ToastState } from '../components/Toast';
 import type { Expense } from '../types/expense';
 
@@ -61,11 +63,16 @@ export function ExpensesPage() {
     [showToast],
   );
 
+  const copyPrompt = useBudgetCopyPrompt();
+
   const createHook = useCreateExpense({
     onSuccess: (expense) => {
       prependItem(expense);
       setFormMode({ kind: 'closed' });
       showToast({ kind: 'success', message: 'Despesa registrada.' });
+      // FR-025: offer to copy the previous month's budgets if this expense lands
+      // in a month with no budget yet. Never blocks the expense flow.
+      void copyPrompt.checkAfterExpense(expense.date);
     },
     onError: (err) => {
       if (err.kind !== 'validation') showToast({ kind: 'error', message: err.message });
@@ -186,6 +193,15 @@ export function ExpensesPage() {
           if (!deleteHook.isDeleting) setDeleting(null);
         }}
         onConfirm={handleConfirmDelete}
+      />
+
+      <CopyPreviousMonthDialog
+        open={copyPrompt.prompt !== null}
+        fromMonth={copyPrompt.prompt?.fromMonth ?? ''}
+        toMonth={copyPrompt.prompt?.toMonth ?? ''}
+        isCopying={copyPrompt.isCopying}
+        onClose={copyPrompt.dismiss}
+        onConfirm={() => void copyPrompt.confirm()}
       />
 
       <Toast value={toast} onDismiss={() => setToast(null)} />

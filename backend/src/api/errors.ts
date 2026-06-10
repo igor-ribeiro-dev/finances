@@ -49,6 +49,13 @@ export const IdempotencyErrorCode = {
   crossResourceConflict: 'idempotency.cross_resource_conflict',
 } as const;
 
+/** Machine-readable error codes introduced by feature 008 (budgets). */
+export const BudgetErrorCode = {
+  invalidMonth: 'budget.invalid_month',
+  targetNotFound: 'budget.target_not_found',
+  invalidPercent: 'budget.invalid_percent',
+} as const;
+
 export function sendError(
   res: Response,
   status: number,
