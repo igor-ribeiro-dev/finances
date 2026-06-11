@@ -1,0 +1,330 @@
+openapi: 3.1.0
+info:
+  title: Finances API — Dashboard module
+  version: 1.0.0-009
+  description: |
+    HTTP contract for feature 009 (Dashboard de Orçamentos e Despesas).
+
+    Covers 1 new read-only endpoint:
+      - GET /api/v1/dashboard?month=YYYY-MM → full month picture: family spending
+        vs. family budget, per-member spending vs. resolved individual budgets,
+        per-category spending (root aggregates its sub-categories), and the
+        "uncategorized" bucket.
+
+    Derivation rules (see data-model.md):
+      - Expenses are bucketed by their civil `date` (feature 006 FR-013) into
+        [YYYY-MM-01, first day of next month). Payment method is irrelevant —
+        all expenses count (FR-003).
+      - Budget limits reuse feature 008's resolution (ResolvedLimit shape):
+        resolvedCents = effective cents; null = "not resolvable" → the dashboard
+        treats it as "no budget set" (FR-007).
+      - members[] contains every active group member (spentCents 0 included)
+        plus ex-members that own expenses in the month (isExMember: true,
+        budget always null). Invariant: family.spentCents = Σ members[].spentCents.
+      - categories[] contains the group's full flattened tree; for roots,
+        spentCents = directSpentCents + Σ children's directSpentCents
+        (umbrella rule, Clarification Q1). Invariant:
+        family.spentCents = Σ roots.spentCents + uncategorizedSpentCents.
+      - The contract carries integer cents only. Display percentages (share,
+        consumption) are derived client-side as integers (FR-018).
+
+    The endpoint requires an active session cookie (feature 004) and group
+    membership (feature 006); every query is scoped to the session's group.
+    Any syntactically valid month is accepted (months without data return
+    zeros); the "no future months" rule (FR-013) is enforced by the UI.
+
+    No existing endpoint/contract is modified.
+  contact:
+    name: Família app — backend
+servers:
+  - url: http://localhost:3000
+    description: Local dev
+  - url: https://app.familia.example/api
+    description: Production (TBD)
+tags:
+  - name: dashboard
+    description: Read-only monthly summary of spending vs. budgets.
+
+#####################################################################
+# Security
+#####################################################################
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sid
+      description: Session cookie set by /api/v1/auth/login. Required on every endpoint.
+
+  parameters:
+    MonthQuery:
+      in: query
+      name: month
+      required: true
+      schema:
+        type: string
+        pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+        example: '2026-06'
+      description: >-
+        Calendar month in YYYY-MM. Expenses are matched by civil date within
+        [month-01, next-month-01). Months without data return zeroed totals.
+
+  schemas:
+    #################################################################
+    # Reused shape (identical to feature 008's ResolvedLimit)
+    #################################################################
+    ResolvedLimit:
+      type: object
+      description: >-
+        A budget limit as defined in feature 008, already resolved server-side.
+        resolvedCents: effective limit in cents; null = not resolvable (base
+        missing, FR-022/008) — the dashboard renders it as "orçamento não definido".
+      required: [limitType, amountCents, percent, resolvedCents]
+      properties:
+        limitType:
+          type: string
+          enum: [ABSOLUTE, PERCENT]
+        amountCents:
+          type: [integer, 'null']
+          minimum: 1
+          description: Present when limitType=ABSOLUTE.
+        percent:
+          type: [integer, 'null']
+          minimum: 1
+          description: Present when limitType=PERCENT (non-negative integer).
+        resolvedCents:
+          type: [integer, 'null']
+          minimum: 0
+          description: Effective cents (half-up); null = not resolvable.
+
+    FamilySummary:
+      type: object
+      required: [spentCents, budget]
+      properties:
+        spentCents:
+          type: integer
+          minimum: 0
+          description: Sum of every group expense in the month, in cents.
+        budget:
+          oneOf:
+            - $ref: '#/components/schemas/ResolvedLimit'
+            - type: 'null'
+          description: FAMILY budget of the month; null when not set (FR-005).
+
+    MemberSpending:
+      type: object
+      required: [memberId, name, isExMember, spentCents, budget]
+      properties:
+        memberId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: Member display name (preserved for ex-members, 006 FR-018).
+        isExMember:
+          type: boolean
+          description: >-
+            true when the user no longer belongs to the group but owns expenses
+            in this month (inactive row — no budget comparison, Clarification Q2).
+            Ex-members without expenses in the month are omitted.
+        spentCents:
+          type: integer
+          minimum: 0
+          description: Sum of expenses owned by this member in the month.
+        budget:
+          oneOf:
+            - $ref: '#/components/schemas/ResolvedLimit'
+            - type: 'null'
+          description: MEMBER budget resolved (008); always null for ex-members.
+
+    CategorySpending:
+      type: object
+      required: [categoryId, name, parentId, directSpentCents, spentCents, budget]
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parentId:
+          type: [string, 'null']
+          format: uuid
+          description: null = root category.
+        directSpentCents:
+          type: integer
+          minimum: 0
+          description: Expenses assigned exactly to this category.
+        spentCents:
+          type: integer
+          minimum: 0
+          description: >-
+            Roots: directSpentCents + Σ children's directSpentCents (umbrella
+            rule, Clarification Q1). Sub-categories: equals directSpentCents.
+        budget:
+          oneOf:
+            - $ref: '#/components/schemas/ResolvedLimit'
+            - type: 'null'
+          description: CATEGORY budget resolved (008); null when not set.
+
+    MonthDashboard:
+      type: object
+      required: [month, family, members, categories, uncategorizedSpentCents]
+      properties:
+        month:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          example: '2026-06'
+        family:
+          $ref: '#/components/schemas/FamilySummary'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemberSpending'
+          description: Active members (all) + ex-members with expenses in the month.
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategorySpending'
+          description: >-
+            Full flattened category tree of the group (zero-spend categories
+            included). Display filtering/ordering (participation desc,
+            FR-009) is a client concern (research R8).
+        uncategorizedSpentCents:
+          type: integer
+          minimum: 0
+          description: Sum of expenses with no category (or whose category was deleted).
+
+    #################################################################
+    # Error envelope — flat shape shared with features 004/006/007/008
+    #################################################################
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code.
+          examples: ['dashboard.invalid_month', 'auth.not_authenticated', 'group.membership_required']
+        message:
+          type: string
+          description: Human-readable message (PT-BR).
+        fieldErrors:
+          type: array
+          description: Present on field validation errors (400).
+          items:
+            type: object
+            required: [field, code, message]
+            properties:
+              field:
+                type: string
+                examples: ['month']
+              code:
+                type: string
+              message:
+                type: string
+
+  responses:
+    Unauthorized:
+      description: No valid session (401).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    MembershipRequired:
+      description: Authenticated but not a member of any family group (403).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ValidationError:
+      description: Invalid or missing month parameter (400).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: dashboard.invalid_month
+            message: 'Mês inválido. Use o formato YYYY-MM.'
+            fieldErrors:
+              - field: month
+                code: invalid_format
+                message: 'Informe o mês no formato YYYY-MM.'
+
+security:
+  - sessionCookie: []
+
+#####################################################################
+# Paths
+#####################################################################
+paths:
+  /api/v1/dashboard:
+    get:
+      tags: [dashboard]
+      operationId: getMonthDashboard
+      summary: Monthly dashboard — spending vs. budgets for the session's group.
+      description: >-
+        Returns the aggregated month picture. Read-only; recomputed on every
+        request (no snapshots). All monetary fields are integer cents.
+      parameters:
+        - $ref: '#/components/parameters/MonthQuery'
+      responses:
+        '200':
+          description: Aggregated month dashboard.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthDashboard'
+              example:
+                month: '2026-06'
+                family:
+                  spentCents: 325000
+                  budget:
+                    limitType: ABSOLUTE
+                    amountCents: 500000
+                    percent: null
+                    resolvedCents: 500000
+                members:
+                  - memberId: 'a1b2c3d4-0000-0000-0000-000000000001'
+                    name: 'Igor'
+                    isExMember: false
+                    spentCents: 120000
+                    budget:
+                      limitType: PERCENT
+                      amountCents: null
+                      percent: 30
+                      resolvedCents: 150000
+                  - memberId: 'a1b2c3d4-0000-0000-0000-000000000002'
+                    name: 'Ana'
+                    isExMember: false
+                    spentCents: 180000
+                    budget: null
+                  # Ex-member: flagged by isExMember only — the name is never decorated.
+                  - memberId: 'a1b2c3d4-0000-0000-0000-000000000003'
+                    name: 'Carlos'
+                    isExMember: true
+                    spentCents: 25000
+                    budget: null
+                categories:
+                  - categoryId: 'c0000000-0000-0000-0000-000000000010'
+                    name: 'Alimentação'
+                    parentId: null
+                    directSpentCents: 40000
+                    spentCents: 150000
+                    budget:
+                      limitType: ABSOLUTE
+                      amountCents: 200000
+                      percent: null
+                      resolvedCents: 200000
+                  - categoryId: 'c0000000-0000-0000-0000-000000000011'
+                    name: 'Mercado'
+                    parentId: 'c0000000-0000-0000-0000-000000000010'
+                    directSpentCents: 110000
+                    spentCents: 110000
+                    budget: null
+                uncategorizedSpentCents: 50000
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/MembershipRequired'

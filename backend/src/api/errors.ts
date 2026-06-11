@@ -56,6 +56,11 @@ export const BudgetErrorCode = {
   invalidPercent: 'budget.invalid_percent',
 } as const;
 
+/** Machine-readable error codes introduced by feature 009 (dashboard). */
+export const DashboardErrorCode = {
+  invalidMonth: 'dashboard.invalid_month',
+} as const;
+
 export function sendError(
   res: Response,
   status: number,
