@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/009-budget-dashboard/plan.md
+at specs/010-monthly-payment-tracker/plan.md
 <!-- SPECKIT END -->

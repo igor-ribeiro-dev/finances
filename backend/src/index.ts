@@ -4,6 +4,7 @@ config({ path: join(__dirname, '../.env') });
 
 import { validateEnv } from './env';
 import { createApp } from './app';
+import { startRecurringBillScheduler } from './infra/recurring-bill-scheduler';
 
 validateEnv(['PORT']);
 
@@ -13,6 +14,8 @@ const app = createApp();
 const server = app.listen(port, () => {
   process.stdout.write(`[backend] Server listening on port ${port}\n`);
 });
+
+startRecurringBillScheduler();
 
 server.on('error', (err: NodeJS.ErrnoException) => {
   if (err.code === 'EADDRINUSE') {

@@ -42,10 +42,10 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     id: 'pagamentos',
-    label: 'Pagamentos Mensais',
+    label: 'Pagamentos',
     path: '/pagamentos',
     icon: CalendarClock,
-    status: 'coming-soon',
+    status: 'active',
   },
   {
     id: 'cartoes',

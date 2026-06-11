@@ -1,0 +1,729 @@
+openapi: 3.1.0
+info:
+  title: Finances API — Monthly Payment Tracker module
+  version: 1.0.0-010
+  description: |
+    HTTP contract for feature 010 (Monthly Payment Tracker / Contas do Mês).
+
+    Two new resource modules:
+      - /api/v1/bills            → monthly obligations checklist (Bill)
+      - /api/v1/recurring-bills  → recurring bill templates (RecurringBill)
+
+    Core semantics (see data-model.md and research.md):
+      - Recurring instances are materialized by a scheduled in-process job
+        (boot + daily) for the GENERATION WINDOW: current month + next month
+        (idempotent — unique (recurringBillId, month); catch-up runs at
+        template creation/resume). GET /bills?month is read-only: it lists
+        persisted bills and, for applicable months without a persisted
+        instance (typically beyond the window), returns read-only PROJECTED
+        entries (projectedBills, "Prevista") computed from the templates.
+      - Paying a bill (POST /bills/{id}/pay) atomically sets status=PAID,
+        records payment data, and CREATES the linked Expense (counts toward
+        budgets in the payment-date month). Reverting (DELETE
+        /bills/{id}/payment) atomically returns to PENDING and DELETES the
+        linked expense. Editing payment data (PATCH /bills/{id}/payment)
+        synchronizes the linked expense in the same transaction.
+      - State machine (409 bill.invalid_transition otherwise):
+        PENDING→PAID (pay), PAID→PENDING (revert), PENDING→CANCELLED (cancel),
+        CANCELLED→PENDING (reactivate). PAID→CANCELLED is forbidden.
+      - Base fields are editable only while PENDING; bills can be deleted
+        only while not PAID.
+      - POST /bills/copy duplicates the previous month's non-cancelled
+        ONE-OFF bills (recurring instances are skipped) into targetMonth;
+        dryRun=true returns the count only (UI confirmation).
+      - Recurring templates: pause/resume (resume advances activeFromMonth,
+        R2), stop (terminal; auto-cancels PENDING instances in months after
+        the current one), delete (soft; same effect as stop, hidden from
+        lists, past instances preserved).
+      - All monetary values are integer cents. All bills/templates are scoped
+        to the session's family group (auth + membership middlewares).
+
+    Modification to an EXISTING contract (additive, non-breaking):
+      - Expense envelope (features 006/011) gains nullable field
+        `billId: string | null`. When not null the expense is managed by the
+        tracker: PATCH/DELETE /api/v1/expenses/{id} return
+        409 expense.managed_by_bill.
+  contact:
+    name: Família app — backend
+servers:
+  - url: http://localhost:3000
+    description: Local dev
+  - url: https://app.familia.example/api
+    description: Production (TBD)
+tags:
+  - name: bills
+    description: Monthly obligations checklist (Contas do mês).
+  - name: recurring-bills
+    description: Recurring bill templates (Contas fixas).
+
+#####################################################################
+# Security
+#####################################################################
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sid
+      description: Session cookie set by /api/v1/auth/login. Required on every endpoint.
+
+  parameters:
+    MonthQuery:
+      name: month
+      in: query
+      required: true
+      description: Calendar month (YYYY-MM).
+      schema:
+        type: string
+        pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+        examples: ['2026-06']
+    BillId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    RecurringBillId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  schemas:
+    #################################################################
+    # Bill
+    #################################################################
+    Bill:
+      type: object
+      required: [id, description, expectedAmountCents, dueDate, month, status,
+                 categoryId, ownerMemberId, recurringBillId, payment, isOverdue]
+      properties:
+        id: { type: string, format: uuid }
+        description: { type: string, maxLength: 200 }
+        expectedAmountCents:
+          type: integer
+          minimum: 1
+          description: Original estimated amount; never changed by payment (FR-005).
+        dueDate: { type: string, format: date, examples: ['2026-06-10'] }
+        month:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          description: Calendar month bucket derived from dueDate.
+        status:
+          type: string
+          enum: [PENDING, PAID, CANCELLED]
+        categoryId: { type: ['string', 'null'], format: uuid }
+        ownerMemberId:
+          type: ['string', 'null']
+          format: uuid
+          description: Default responsible member; pre-fills the payment form.
+        recurringBillId:
+          type: ['string', 'null']
+          format: uuid
+          description: Non-null when generated by a recurring template ("Conta fixa" badge).
+        isOverdue:
+          type: boolean
+          description: true when status=PENDING and dueDate < today (FR-013). Derived server-side.
+        payment:
+          oneOf:
+            - $ref: '#/components/schemas/BillPayment'
+            - type: 'null'
+          description: Present iff status=PAID (payment invariant).
+    BillPayment:
+      type: object
+      required: [paidDate, actualAmountCents, paidByMemberId, paymentMethod, expenseId]
+      properties:
+        paidDate: { type: string, format: date }
+        actualAmountCents: { type: integer, minimum: 1 }
+        paidByMemberId: { type: string, format: uuid }
+        paymentMethod: { type: string, enum: [CASH_OR_DEBIT, CREDIT_CARD] }
+        expenseId:
+          type: string
+          format: uuid
+          description: Linked expense created by the payment (FR-006). Read-only in the expense module.
+    MonthSummary:
+      type: object
+      required: [totalExpectedCents, totalPaidCents, totalPendingCents, projectedCents]
+      description: Cancelled bills excluded from every total (FR-010). Integer cents.
+      properties:
+        totalExpectedCents:
+          type: integer
+          description: Σ expectedAmountCents of PENDING + PAID bills.
+        totalPaidCents:
+          type: integer
+          description: Σ actualAmountCents of PAID bills.
+        totalPendingCents:
+          type: integer
+          description: Σ expectedAmountCents of PENDING bills.
+        projectedCents:
+          type: integer
+          description: |
+            Σ expectedAmountCents of projectedBills (FR-010/FR-025). Always
+            separate from the three real-bill totals; 0 when the month has
+            no projections.
+    ProjectedBill:
+      type: object
+      description: |
+        Virtual read-only preview of a recurring bill in an applicable month
+        without a persisted instance (FR-025). Not persisted; no Bill id; no
+        actions. Becomes a real PENDING bill when the month enters the
+        generation window.
+      required: [recurringBillId, description, expectedAmountCents, dueDate]
+      properties:
+        recurringBillId: { type: string, format: uuid }
+        description: { type: string, maxLength: 200 }
+        expectedAmountCents: { type: integer, minimum: 1 }
+        dueDate:
+          type: string
+          format: date
+          description: dueDay clamped to the month's last day (FR-019).
+        categoryId: { type: ['string', 'null'], format: uuid }
+        ownerMemberId: { type: ['string', 'null'], format: uuid }
+    MonthBillsResponse:
+      type: object
+      required: [month, summary, bills, projectedBills]
+      properties:
+        month: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+        summary: { $ref: '#/components/schemas/MonthSummary' }
+        bills:
+          type: array
+          description: Ordered by dueDate asc, then createdAt asc.
+          items: { $ref: '#/components/schemas/Bill' }
+        projectedBills:
+          type: array
+          description: |
+            Projections from ACTIVE templates applicable to the month and
+            lacking a persisted instance. Empty for months fully inside the
+            generation window (normal case) and for paused/stopped/deleted
+            templates. Ordered by dueDate asc.
+          items: { $ref: '#/components/schemas/ProjectedBill' }
+    CreateBillRequest:
+      type: object
+      required: [description, expectedAmountCents, dueDate]
+      properties:
+        description: { type: string, minLength: 1, maxLength: 200 }
+        expectedAmountCents: { type: integer, minimum: 1 }
+        dueDate: { type: string, format: date }
+        categoryId: { type: ['string', 'null'], format: uuid }
+        ownerMemberId: { type: ['string', 'null'], format: uuid }
+    UpdateBillRequest:
+      type: object
+      description: Allowed only while status=PENDING (FR-012). At least one field.
+      minProperties: 1
+      properties:
+        description: { type: string, minLength: 1, maxLength: 200 }
+        expectedAmountCents: { type: integer, minimum: 1 }
+        dueDate:
+          type: string
+          format: date
+          description: Changing it recalculates `month` (bill may move between months).
+        categoryId: { type: ['string', 'null'], format: uuid }
+        ownerMemberId: { type: ['string', 'null'], format: uuid }
+    PayBillRequest:
+      type: object
+      required: [paidDate, actualAmountCents, paidByMemberId, paymentMethod]
+      properties:
+        paidDate: { type: string, format: date }
+        actualAmountCents: { type: integer, minimum: 1 }
+        paidByMemberId: { type: string, format: uuid }
+        paymentMethod: { type: string, enum: [CASH_OR_DEBIT, CREDIT_CARD] }
+    UpdatePaymentRequest:
+      type: object
+      description: Allowed only while status=PAID (FR-016). At least one field. Linked expense synchronized transactionally.
+      minProperties: 1
+      properties:
+        paidDate: { type: string, format: date }
+        actualAmountCents: { type: integer, minimum: 1 }
+        paidByMemberId: { type: string, format: uuid }
+        paymentMethod: { type: string, enum: [CASH_OR_DEBIT, CREDIT_CARD] }
+    CopyBillsRequest:
+      type: object
+      required: [targetMonth]
+      properties:
+        targetMonth:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          description: Copies come from the month immediately before targetMonth.
+        dryRun:
+          type: boolean
+          default: false
+          description: true → count only, nothing created (UI confirmation step).
+    CopyBillsResponse:
+      type: object
+      required: [count]
+      properties:
+        count:
+          type: integer
+          description: Number of bills copied (or that would be copied, when dryRun).
+        bills:
+          type: array
+          description: Present only when dryRun=false.
+          items: { $ref: '#/components/schemas/Bill' }
+
+    #################################################################
+    # RecurringBill
+    #################################################################
+    RecurringBill:
+      type: object
+      required: [id, description, expectedAmountCents, dueDay, interval,
+                 startMonth, status, categoryId, ownerMemberId]
+      properties:
+        id: { type: string, format: uuid }
+        description: { type: string, maxLength: 200 }
+        expectedAmountCents: { type: integer, minimum: 1 }
+        dueDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+          description: Months lacking this day use their last day (FR-019).
+        interval: { type: string, enum: [MONTHLY, ANNUAL] }
+        startMonth:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          description: Annual recurrences anchor to this month's month-of-year (FR-019).
+        status: { type: string, enum: [ACTIVE, PAUSED, STOPPED] }
+        categoryId: { type: ['string', 'null'], format: uuid }
+        ownerMemberId: { type: ['string', 'null'], format: uuid }
+    CreateRecurringBillRequest:
+      type: object
+      required: [description, expectedAmountCents, dueDay, interval, startMonth]
+      properties:
+        description: { type: string, minLength: 1, maxLength: 200 }
+        expectedAmountCents: { type: integer, minimum: 1 }
+        dueDay: { type: integer, minimum: 1, maximum: 31 }
+        interval: { type: string, enum: [MONTHLY, ANNUAL] }
+        startMonth: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+        includeStartMonth:
+          type: boolean
+          description: |
+            Required by the UI flow when startMonth's due date has already
+            passed at creation time (FR-019): true → the start month's
+            instance is still generated (overdue); false → generation starts
+            at the next applicable period (activeFromMonth advances).
+            Ignored when the due date hasn't passed.
+        categoryId: { type: ['string', 'null'], format: uuid }
+        ownerMemberId: { type: ['string', 'null'], format: uuid }
+    UpdateRecurringBillRequest:
+      type: object
+      description: |
+        Template edit (FR-023): propagates to PENDING instances in months
+        after the current one (last edit wins); PAID/CANCELLED and past
+        months untouched. Allowed while ACTIVE or PAUSED.
+      minProperties: 1
+      properties:
+        description: { type: string, minLength: 1, maxLength: 200 }
+        expectedAmountCents: { type: integer, minimum: 1 }
+        dueDay: { type: integer, minimum: 1, maximum: 31 }
+        categoryId: { type: ['string', 'null'], format: uuid }
+        ownerMemberId: { type: ['string', 'null'], format: uuid }
+
+    #################################################################
+    # Error envelope — flat shape shared with features 004/006/007/008/009
+    #################################################################
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code.
+          examples: ['bill.invalid_transition', 'bill.not_found',
+                     'recurring_bill.not_found', 'expense.managed_by_bill',
+                     'auth.not_authenticated', 'group.membership_required']
+        message:
+          type: string
+          description: Human-readable message (PT-BR).
+        fieldErrors:
+          type: array
+          description: Present on field validation errors (400).
+          items:
+            type: object
+            required: [field, code, message]
+            properties:
+              field: { type: string }
+              code: { type: string }
+              message: { type: string }
+
+  responses:
+    ValidationError:
+      description: Invalid payload or month parameter (400).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            code: bill.validation
+            message: 'Dados inválidos.'
+            fieldErrors:
+              - field: expectedAmountCents
+                code: too_small
+                message: 'Informe um valor maior que zero.'
+    Unauthenticated:
+      description: Missing/expired session (401).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: auth.not_authenticated, message: 'Sessão expirada. Entre novamente.' }
+    NotMember:
+      description: User has no family group (403).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: group.membership_required, message: 'Você precisa participar de um grupo familiar.' }
+    BillNotFound:
+      description: Bill not found in the session's group (404).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: bill.not_found, message: 'Conta não encontrada.' }
+    RecurringNotFound:
+      description: Template not found (or soft-deleted) in the session's group (404).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: recurring_bill.not_found, message: 'Conta fixa não encontrada.' }
+    InvalidTransition:
+      description: State machine violation (409).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: bill.invalid_transition, message: 'Uma conta paga precisa ter o pagamento revertido antes.' }
+
+security:
+  - sessionCookie: []
+
+#####################################################################
+# Paths — bills
+#####################################################################
+paths:
+  /api/v1/bills:
+    get:
+      tags: [bills]
+      summary: Month checklist (read-only; persisted bills + projected entries)
+      operationId: listMonthBills
+      parameters: [{ $ref: '#/components/parameters/MonthQuery' }]
+      responses:
+        '200':
+          description: Month bills + projections + summary. Any valid month accepted (past, current, future).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonthBillsResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+    post:
+      tags: [bills]
+      summary: Create a one-off bill (FR-001)
+      operationId: createBill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBillRequest' }
+      responses:
+        '201':
+          description: Created (status PENDING).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bill' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+
+  /api/v1/bills/copy:
+    post:
+      tags: [bills]
+      summary: Copy previous month's one-off non-cancelled bills (FR-017)
+      operationId: copyPreviousMonthBills
+      description: Recurring instances are skipped. dryRun=true returns count only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CopyBillsRequest' }
+      responses:
+        '200':
+          description: dryRun result (count) or created copies (count + bills).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CopyBillsResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+
+  /api/v1/bills/{id}:
+    patch:
+      tags: [bills]
+      summary: Edit base fields (PENDING only, FR-012)
+      operationId: updateBill
+      parameters: [{ $ref: '#/components/parameters/BillId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateBillRequest' }
+      responses:
+        '200':
+          description: Updated bill (month recalculated when dueDate changed).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bill' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+        '404': { $ref: '#/components/responses/BillNotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+    delete:
+      tags: [bills]
+      summary: Delete a never-paid bill (FR-012)
+      operationId: deleteBill
+      parameters: [{ $ref: '#/components/parameters/BillId' }]
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+        '404': { $ref: '#/components/responses/BillNotFound' }
+        '409':
+          description: Bill is PAID (revert first).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example: { code: bill.invalid_transition, message: 'Reverta o pagamento antes de excluir.' }
+
+  /api/v1/bills/{id}/pay:
+    post:
+      tags: [bills]
+      summary: Mark as PAID — creates the linked expense atomically (FR-005/006)
+      operationId: payBill
+      parameters: [{ $ref: '#/components/parameters/BillId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PayBillRequest' }
+      responses:
+        '200':
+          description: Bill PAID; payment + linked expenseId in the envelope.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bill' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+        '404': { $ref: '#/components/responses/BillNotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+
+  /api/v1/bills/{id}/payment:
+    patch:
+      tags: [bills]
+      summary: Edit payment data — synchronizes the linked expense (FR-016)
+      operationId: updateBillPayment
+      parameters: [{ $ref: '#/components/parameters/BillId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePaymentRequest' }
+      responses:
+        '200':
+          description: Updated bill (PAID, payment synchronized).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bill' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+        '404': { $ref: '#/components/responses/BillNotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+    delete:
+      tags: [bills]
+      summary: Revert payment — PAID→PENDING, deletes the linked expense (FR-008)
+      operationId: revertBillPayment
+      parameters: [{ $ref: '#/components/parameters/BillId' }]
+      responses:
+        '200':
+          description: Bill back to PENDING (payment null).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bill' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+        '404': { $ref: '#/components/responses/BillNotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+
+  /api/v1/bills/{id}/cancel:
+    post:
+      tags: [bills]
+      summary: Cancel a PENDING bill (FR-009)
+      operationId: cancelBill
+      parameters: [{ $ref: '#/components/parameters/BillId' }]
+      responses:
+        '200':
+          description: Bill CANCELLED (visible, excluded from totals).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bill' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+        '404': { $ref: '#/components/responses/BillNotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+
+  /api/v1/bills/{id}/reactivate:
+    post:
+      tags: [bills]
+      summary: Reactivate a CANCELLED bill to PENDING (FR-009)
+      operationId: reactivateBill
+      parameters: [{ $ref: '#/components/parameters/BillId' }]
+      responses:
+        '200':
+          description: Bill back to PENDING.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bill' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+        '404': { $ref: '#/components/responses/BillNotFound' }
+        '409': { $ref: '#/components/responses/InvalidTransition' }
+
+  #####################################################################
+  # Paths — recurring-bills
+  #####################################################################
+  /api/v1/recurring-bills:
+    get:
+      tags: [recurring-bills]
+      summary: List templates (ACTIVE/PAUSED/STOPPED; soft-deleted hidden)
+      operationId: listRecurringBills
+      responses:
+        '200':
+          description: Templates ordered by description asc.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [recurringBills]
+                properties:
+                  recurringBills:
+                    type: array
+                    items: { $ref: '#/components/schemas/RecurringBill' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+    post:
+      tags: [recurring-bills]
+      summary: Create a recurring template (FR-018/019)
+      operationId: createRecurringBill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRecurringBillRequest' }
+      responses:
+        '201':
+          description: Created (status ACTIVE). Window instances (current/next month) materialize synchronously (catch-up); later months appear as projections.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecurringBill' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+
+  /api/v1/recurring-bills/{id}:
+    patch:
+      tags: [recurring-bills]
+      summary: Edit template — propagates to future PENDING instances (FR-023)
+      operationId: updateRecurringBill
+      parameters: [{ $ref: '#/components/parameters/RecurringBillId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateRecurringBillRequest' }
+      responses:
+        '200':
+          description: Updated template.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecurringBill' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+        '404': { $ref: '#/components/responses/RecurringNotFound' }
+        '409':
+          description: Template is STOPPED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example: { code: recurring_bill.invalid_transition, message: 'Conta fixa encerrada não pode ser editada.' }
+    delete:
+      tags: [recurring-bills]
+      summary: Delete template (soft) — same effect as stop; history preserved (FR-024)
+      operationId: deleteRecurringBill
+      parameters: [{ $ref: '#/components/parameters/RecurringBillId' }]
+      responses:
+        '204': { description: Soft-deleted; future PENDING instances cancelled. }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+        '404': { $ref: '#/components/responses/RecurringNotFound' }
+
+  /api/v1/recurring-bills/{id}/pause:
+    post:
+      tags: [recurring-bills]
+      summary: Pause — no new instances while paused (FR-021)
+      operationId: pauseRecurringBill
+      parameters: [{ $ref: '#/components/parameters/RecurringBillId' }]
+      responses:
+        '200':
+          description: Template PAUSED. Existing instances untouched.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecurringBill' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+        '404': { $ref: '#/components/responses/RecurringNotFound' }
+        '409':
+          description: Not ACTIVE.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example: { code: recurring_bill.invalid_transition, message: 'Apenas contas fixas ativas podem ser pausadas.' }
+
+  /api/v1/recurring-bills/{id}/resume:
+    post:
+      tags: [recurring-bills]
+      summary: Resume — skipped paused months are not generated retroactively (R2)
+      operationId: resumeRecurringBill
+      parameters: [{ $ref: '#/components/parameters/RecurringBillId' }]
+      responses:
+        '200':
+          description: Template ACTIVE again (activeFromMonth advanced to current month).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecurringBill' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+        '404': { $ref: '#/components/responses/RecurringNotFound' }
+        '409':
+          description: Not PAUSED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example: { code: recurring_bill.invalid_transition, message: 'Apenas contas fixas pausadas podem ser retomadas.' }
+
+  /api/v1/recurring-bills/{id}/stop:
+    post:
+      tags: [recurring-bills]
+      summary: Stop permanently — cancels future PENDING instances (FR-022)
+      operationId: stopRecurringBill
+      parameters: [{ $ref: '#/components/parameters/RecurringBillId' }]
+      responses:
+        '200':
+          description: Template STOPPED (terminal). Past/current-month instances preserved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecurringBill' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/NotMember' }
+        '404': { $ref: '#/components/responses/RecurringNotFound' }
+        '409':
+          description: Already STOPPED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example: { code: recurring_bill.invalid_transition, message: 'Conta fixa já encerrada.' }

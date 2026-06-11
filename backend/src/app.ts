@@ -8,6 +8,8 @@ import { expenseRouter } from './api/expense/expense.router';
 import { categoryRouter } from './api/category/category.router';
 import { budgetRouter } from './api/budget/budget.router';
 import { dashboardRouter } from './api/dashboard/dashboard.router';
+import { billRouter } from './api/bill/bill.router';
+import { recurringBillRouter } from './api/recurring-bill/recurring-bill.router';
 
 export function createApp(): express.Application {
   const app = express();
@@ -28,6 +30,8 @@ export function createApp(): express.Application {
   app.use('/api/v1/categories', categoryRouter);
   app.use('/api/v1/budgets', budgetRouter);
   app.use('/api/v1/dashboard', dashboardRouter);
+  app.use('/api/v1/bills', billRouter);
+  app.use('/api/v1/recurring-bills', recurringBillRouter);
 
   return app;
 }
