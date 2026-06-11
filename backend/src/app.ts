@@ -7,6 +7,7 @@ import { familyGroupRouter } from './api/family-group/family-group.router';
 import { expenseRouter } from './api/expense/expense.router';
 import { categoryRouter } from './api/category/category.router';
 import { budgetRouter } from './api/budget/budget.router';
+import { dashboardRouter } from './api/dashboard/dashboard.router';
 
 export function createApp(): express.Application {
   const app = express();
@@ -26,6 +27,7 @@ export function createApp(): express.Application {
   app.use('/api/v1/expenses', expenseRouter);
   app.use('/api/v1/categories', categoryRouter);
   app.use('/api/v1/budgets', budgetRouter);
+  app.use('/api/v1/dashboard', dashboardRouter);
 
   return app;
 }

@@ -36,6 +36,21 @@ export interface UpdateExpenseData {
   updatedById: string;
 }
 
+/** Aggregated month spending in integer cents (feature 009 dashboard read-model). */
+export interface MonthSpendingAggregate {
+  byMember: { ownerMemberId: string; spentCents: number }[];
+  byCategory: { categoryId: string | null; spentCents: number }[];
+}
+
+/** `YYYY-MM` → civil-date range `[month-01, next-month-01)` (UTC, no tz math). */
+export function monthDateRange(month: string): { gte: Date; lt: Date } {
+  const [y, m] = month.split('-').map(Number);
+  return {
+    gte: new Date(Date.UTC(y as number, (m as number) - 1, 1)),
+    lt: new Date(Date.UTC(y as number, m as number, 1)),
+  };
+}
+
 // Single SQL query with a double LEFT JOIN (category + its parent root) — FR-026,
 // zero N+1. parent is only present for sub-categories.
 const ownerMemberInclude = {
@@ -96,5 +111,28 @@ export const expenseRepository = {
 
   async delete(id: string): Promise<void> {
     await prisma.expense.delete({ where: { id } });
+  },
+
+  /**
+   * Month spending sums by owner member and by category (feature 009, research R3).
+   * Two index-range groupBy queries over (groupId, date); SUM runs in Postgres on
+   * the INTEGER cents column — exact integer arithmetic (Constitution III).
+   */
+  async aggregateMonthSpending(groupId: string, month: string): Promise<MonthSpendingAggregate> {
+    const where = { groupId, date: monthDateRange(month) };
+    const [byMember, byCategory] = await Promise.all([
+      prisma.expense.groupBy({ by: ['ownerMemberId'], where, _sum: { amountCents: true } }),
+      prisma.expense.groupBy({ by: ['categoryId'], where, _sum: { amountCents: true } }),
+    ]);
+    return {
+      byMember: byMember.map((r) => ({
+        ownerMemberId: r.ownerMemberId,
+        spentCents: r._sum.amountCents ?? 0,
+      })),
+      byCategory: byCategory.map((r) => ({
+        categoryId: r.categoryId,
+        spentCents: r._sum.amountCents ?? 0,
+      })),
+    };
   },
 };
