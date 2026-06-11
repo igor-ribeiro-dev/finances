@@ -239,10 +239,10 @@ expenseRouter.patch('/:id', async (req: Request, res: Response) => {
         });
         return;
       }
-      sendError(res, 400, err.code, err.message);
+      sendError(res, err.status ?? 400, err.code, err.message);
       logMutation({
         action: 'update',
-        outcome: 'validation_error',
+        outcome: err.status === 409 ? 'conflict' : 'validation_error',
         userId,
         groupId,
         expenseId: id,
@@ -280,11 +280,23 @@ expenseRouter.delete('/:id', async (req: Request, res: Response) => {
       durationMs: Date.now() - t0,
     });
   } catch (err) {
-    if (err instanceof AppError && err.code === 'not_found') {
-      sendError(res, 404, err.code, err.message);
+    if (err instanceof AppError) {
+      if (err.code === 'not_found') {
+        sendError(res, 404, err.code, err.message);
+        logMutation({
+          action: 'delete',
+          outcome: 'not_found',
+          userId,
+          groupId,
+          expenseId: id,
+          durationMs: Date.now() - t0,
+        });
+        return;
+      }
+      sendError(res, err.status ?? 400, err.code, err.message);
       logMutation({
         action: 'delete',
-        outcome: 'not_found',
+        outcome: err.status === 409 ? 'conflict' : 'validation_error',
         userId,
         groupId,
         expenseId: id,

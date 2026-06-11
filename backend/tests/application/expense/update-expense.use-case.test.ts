@@ -2,6 +2,7 @@ jest.mock('../../../src/infra/prisma', () => ({
   prisma: {
     user: { findFirst: jest.fn() },
     expense: { findFirst: jest.fn(), update: jest.fn() },
+    bill: { findFirst: jest.fn() },
   },
 }));
 
@@ -10,6 +11,7 @@ import { updateExpenseUseCase } from '../../../src/application/expense/update-ex
 
 const user = prisma.user as unknown as { findFirst: jest.Mock };
 const expense = prisma.expense as unknown as { findFirst: jest.Mock; update: jest.Mock };
+const bill = prisma.bill as unknown as { findFirst: jest.Mock };
 
 const body = {
   amountCents: 9999,
@@ -37,7 +39,10 @@ function existing() {
 }
 
 describe('updateExpenseUseCase', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    bill.findFirst.mockResolvedValue(null);
+  });
 
   it('throws not_found when the expense is not in the caller group', async () => {
     expense.findFirst.mockResolvedValue(null);

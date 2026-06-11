@@ -32,6 +32,19 @@ export async function updateExpenseUseCase(
   const existing = await expenseRepository.findByIdInGroup(input.id, input.groupId);
   if (!existing) throw new AppError('not_found', 'Despesa não encontrada.');
 
+  // FR-007: despesa gerenciada pelo tracker de pagamentos é somente leitura
+  const linkedBill = await prisma.bill.findFirst({
+    where: { expenseId: input.id },
+    select: { id: true },
+  });
+  if (linkedBill) {
+    throw new AppError(
+      'expense.managed_by_bill',
+      'Esta despesa é gerenciada pelo controle de pagamentos e não pode ser editada diretamente.',
+      409,
+    );
+  }
+
   const owner = await prisma.user.findFirst({
     where: { id: input.body.ownerMemberId, familyGroupId: input.groupId },
     select: { id: true },

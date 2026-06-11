@@ -67,7 +67,7 @@ describe('Sidebar', () => {
       expect(screen.getByText('Despesas')).toBeInTheDocument();
       expect(screen.getByText('Categorias')).toBeInTheDocument();
       expect(screen.getByText('Orçamentos')).toBeInTheDocument();
-      expect(screen.getByText('Pagamentos Mensais')).toBeInTheDocument();
+      expect(screen.getByText('Pagamentos')).toBeInTheDocument();
       expect(screen.getByText('Cartões de Crédito')).toBeInTheDocument();
     });
 

@@ -1,6 +1,7 @@
 jest.mock('../../../src/infra/prisma', () => ({
   prisma: {
     expense: { findFirst: jest.fn(), delete: jest.fn() },
+    bill: { findFirst: jest.fn() },
   },
 }));
 
@@ -8,9 +9,13 @@ import { prisma } from '../../../src/infra/prisma';
 import { deleteExpenseUseCase } from '../../../src/application/expense/delete-expense.use-case';
 
 const expense = prisma.expense as unknown as { findFirst: jest.Mock; delete: jest.Mock };
+const bill = prisma.bill as unknown as { findFirst: jest.Mock };
 
 describe('deleteExpenseUseCase', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    bill.findFirst.mockResolvedValue(null);
+  });
 
   it('throws not_found when the row is not in the caller group', async () => {
     expense.findFirst.mockResolvedValue(null);

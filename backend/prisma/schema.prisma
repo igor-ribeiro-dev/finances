@@ -7,33 +7,38 @@ datasource db {
 }
 
 model User {
-  id               String               @id @default(uuid())
-  name             String               @db.VarChar(100)
-  email            String               @unique @db.VarChar(255)
-  passwordHash     String               @db.VarChar(255)
-  familyGroupId    String?
-  familyGroup      FamilyGroup?         @relation(fields: [familyGroupId], references: [id])
-  sessions         Session[]
-  resetTokens      PasswordResetToken[]
-  expensesAuthored Expense[]            @relation("ExpenseAuthor")
-  expensesEdited   Expense[]            @relation("ExpenseEditor")
-  expensesOwned    Expense[]            @relation("ExpenseOwner")
-  idempotencyKeys  IdempotencyKey[]
-  memberBudgets    Budget[]             @relation("MemberBudget")
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  id                    String               @id @default(uuid())
+  name                  String               @db.VarChar(100)
+  email                 String               @unique @db.VarChar(255)
+  passwordHash          String               @db.VarChar(255)
+  familyGroupId         String?
+  familyGroup           FamilyGroup?         @relation(fields: [familyGroupId], references: [id])
+  sessions              Session[]
+  resetTokens           PasswordResetToken[]
+  expensesAuthored      Expense[]            @relation("ExpenseAuthor")
+  expensesEdited        Expense[]            @relation("ExpenseEditor")
+  expensesOwned         Expense[]            @relation("ExpenseOwner")
+  idempotencyKeys       IdempotencyKey[]
+  memberBudgets         Budget[]             @relation("MemberBudget")
+  billsOwned            Bill[]               @relation("BillOwner")
+  billsPaid             Bill[]               @relation("BillPayer")
+  recurringBillsOwned   RecurringBill[]      @relation("RecurringBillOwner")
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
 }
 
 model FamilyGroup {
-  id         String     @id @default(uuid())
-  name       String     @db.VarChar(100)
-  members    User[]
-  invite     Invite?
-  expenses   Expense[]
-  categories Category[]
-  budgets    Budget[]
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id             String          @id @default(uuid())
+  name           String          @db.VarChar(100)
+  members        User[]
+  invite         Invite?
+  expenses       Expense[]
+  categories     Category[]
+  budgets        Budget[]
+  bills          Bill[]
+  recurringBills RecurringBill[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
 
 enum PaymentMethod {
@@ -58,21 +63,23 @@ enum BudgetLimitType {
 }
 
 model Category {
-  id             String      @id @default(uuid())
+  id             String          @id @default(uuid())
   groupId        String
-  group          FamilyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  name           String      @db.VarChar(60)
+  group          FamilyGroup     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name           String          @db.VarChar(60)
   parentId       String?
-  parent         Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children       Category[]  @relation("CategoryHierarchy")
+  parent         Category?       @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children       Category[]      @relation("CategoryHierarchy")
   expenses       Expense[]
   budgets        Budget[]
+  bills          Bill[]
+  recurringBills RecurringBill[]
   // normalizedName is a Postgres GENERATED ALWAYS column (declared in raw SQL,
   // collated pt_BR_ci_as). It backs the two partial unique indexes. The Prisma
   // client never reads or writes it — hence @ignore.
-  normalizedName String      @ignore
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  normalizedName String          @ignore
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@index([groupId], map: "category_group_idx")
 }
@@ -93,6 +100,7 @@ model Expense {
   updatedBy     User          @relation("ExpenseEditor", fields: [updatedById], references: [id])
   categoryId    String?
   category      Category?     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  bill          Bill?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -161,4 +169,77 @@ model PasswordResetToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+}
+
+// ─── Feature 010: Monthly Payment Tracker ────────────────────────────────────
+
+enum BillStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum RecurrenceInterval {
+  MONTHLY
+  ANNUAL
+}
+
+enum RecurringBillStatus {
+  ACTIVE
+  PAUSED
+  STOPPED
+}
+
+model RecurringBill {
+  id                   String              @id @default(uuid())
+  groupId              String
+  group                FamilyGroup         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  description          String              @db.VarChar(200)
+  expectedAmountCents  Int
+  dueDay               Int
+  interval             RecurrenceInterval
+  startMonth           DateTime            @db.Date
+  activeFromMonth      DateTime            @db.Date
+  status               RecurringBillStatus @default(ACTIVE)
+  categoryId           String?
+  category             Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  ownerMemberId        String?
+  ownerMember          User?               @relation("RecurringBillOwner", fields: [ownerMemberId], references: [id], onDelete: SetNull)
+  deletedAt            DateTime?
+  bills                Bill[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@index([groupId], map: "recurring_bill_group_idx")
+}
+
+model Bill {
+  id                  String         @id @default(uuid())
+  groupId             String
+  group               FamilyGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  description         String         @db.VarChar(200)
+  expectedAmountCents Int
+  dueDate             DateTime       @db.Date
+  month               DateTime       @db.Date
+  status              BillStatus     @default(PENDING)
+  categoryId          String?
+  category            Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  ownerMemberId       String?
+  ownerMember         User?          @relation("BillOwner", fields: [ownerMemberId], references: [id], onDelete: SetNull)
+  recurringBillId     String?
+  recurringBill       RecurringBill? @relation(fields: [recurringBillId], references: [id], onDelete: Restrict)
+  // Payment fields — all NULL ↔ status ≠ PAID; all NOT NULL ↔ status = PAID
+  paidDate            DateTime?      @db.Date
+  actualAmountCents   Int?
+  paidByMemberId      String?
+  paidByMember        User?          @relation("BillPayer", fields: [paidByMemberId], references: [id], onDelete: SetNull)
+  paymentMethod       PaymentMethod?
+  expenseId           String?        @unique
+  expense             Expense?       @relation(fields: [expenseId], references: [id], onDelete: Restrict)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  // Partial unique index (recurringBillId, month) WHERE recurringBillId IS NOT NULL
+  // is declared as raw SQL in the migration — idempotency guarantee for the scheduler.
+  @@index([groupId, month], map: "bill_group_month_idx")
 }

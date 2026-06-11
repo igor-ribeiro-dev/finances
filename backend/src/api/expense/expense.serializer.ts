@@ -18,6 +18,7 @@ export interface ExpenseResponse {
   updatedById: string;
   category: CategoryRefResponse | null;
   subCategory: CategoryRefResponse | null;
+  billId: string | null;
   createdAt: string;
   updatedAt: string;
   warnings?: string[];
@@ -55,6 +56,7 @@ export function mapExpenseToResponse(
   expense: ExpenseWithOwner,
   groupId: string,
   warnings?: string[],
+  billId?: string | null,
 ): ExpenseResponse {
   const { category, subCategory } = resolveCategoryPath(expense);
   const response: ExpenseResponse = {
@@ -74,6 +76,7 @@ export function mapExpenseToResponse(
     updatedById: expense.updatedById,
     category,
     subCategory,
+    billId: billId ?? null,
     createdAt: expense.createdAt.toISOString(),
     updatedAt: expense.updatedAt.toISOString(),
   };

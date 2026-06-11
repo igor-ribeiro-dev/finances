@@ -6,6 +6,7 @@ jest.mock('../../../src/infra/prisma', () => ({
     session: { findUnique: jest.fn(), update: jest.fn() },
     user: { findUnique: jest.fn() },
     expense: { findFirst: jest.fn(), delete: jest.fn() },
+    bill: { findFirst: jest.fn() },
   },
 }));
 
@@ -15,6 +16,7 @@ const app = createApp();
 const session = prisma.session as unknown as { findUnique: jest.Mock; update: jest.Mock };
 const user = prisma.user as unknown as { findUnique: jest.Mock };
 const expense = prisma.expense as unknown as { findFirst: jest.Mock; delete: jest.Mock };
+const bill = prisma.bill as unknown as { findFirst: jest.Mock };
 
 const EXP_ID = '12345678-1111-4abc-8def-123456789012';
 
@@ -32,6 +34,7 @@ function setupAuthedMember(): void {
   });
   session.update.mockResolvedValue({});
   user.findUnique.mockResolvedValue({ familyGroupId: 'group-1' });
+  bill.findFirst.mockResolvedValue(null);
 }
 
 function mockExisting() {
