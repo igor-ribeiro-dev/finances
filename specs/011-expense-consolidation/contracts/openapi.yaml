@@ -1,0 +1,213 @@
+openapi: 3.1.0
+info:
+  title: Finances API — Expense Consolidation module
+  version: 1.0.0-011
+  description: |
+    HTTP contract delta for feature 011 (Expense Consolidation / Consolidação
+    de Despesas). Builds on the feature-010 bills contract.
+
+    Core semantics (see data-model.md and research.md):
+      - A PAID Bill IS the sole record of a spending; there is no parallel
+        Expense entity (FR-002). The Expense table is dropped by the 011
+        migration (one-time, irreversible — Clarification Q2).
+      - NEW: POST /api/v1/bills/log ("registrar gasto") creates a Bill
+        directly in status=PAID in one step (FR-001). The purchase date (not
+        the month being viewed) governs the bill's month and budget
+        attribution (Clarification Q1). Only paidByMemberId is set;
+        ownerMemberId stays null (Clarification Q3).
+      - Pay / revert / edit-payment (POST /bills/{id}/pay,
+        DELETE|PATCH /bills/{id}/payment) keep the same request/response
+        shape but NO LONGER create, sync, or delete a linked Expense
+        (internal change). The Bill payment envelope no longer carries
+        expenseId.
+      - MODIFIED (additive): BillPayment gains `paidByMember { id, name }` so
+        the tracker checklist can show the responsible member on PAID bills,
+        including ex-members (US2 Scenario 4). Field `expenseId` is REMOVED
+        from BillPayment.
+      - Budget/dashboard spending is computed exclusively from PAID bills,
+        grouped by paidByMemberId / categoryId over paidDate (FR-003/FR-006).
+        Dashboard response shape is unchanged (internal source change only).
+
+    REMOVED contracts (breaking, versioned removal — the only client is this
+    app's own frontend, updated in lockstep):
+      - All /api/v1/expenses/* endpoints (GET list, POST, GET/PATCH/DELETE
+        {id}). After removal they return 404 (resource does not exist) —
+        FR-007. The browser route /despesas redirects to /pagamentos.
+      - The additive `billId` field and the 409 `expense.managed_by_bill`
+        error on the expense envelope (introduced by 010) cease to exist with
+        the expense module.
+  contact:
+    name: Família app — backend
+servers:
+  - url: http://localhost:3000
+    description: Local dev
+  - url: https://app.familia.example/api
+    description: Production (TBD)
+tags:
+  - name: bills
+    description: Monthly obligations checklist + quick spending log (Contas do mês).
+
+security:
+  - sessionCookie: []
+
+paths:
+  /api/v1/bills/log:
+    post:
+      tags: [bills]
+      operationId: logSpending
+      summary: Registrar gasto — cria uma conta já Paga em um passo (FR-001)
+      description: |
+        Creates a Bill with status=PAID atomically (single insert). Mirrors the
+        former expense-registration validation (FR-010). The bill is attributed
+        to the calendar month of `date` (the purchase/payment date), which may
+        differ from the month the user is viewing (Clarification Q1).
+        Sets paidByMemberId = the responsible member; ownerMemberId stays null
+        (Clarification Q3).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogSpendingRequest'
+      responses:
+        '201':
+          description: Created. Returns the new PAID bill.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '400':
+          description: |
+            Validation error (validation.failed) — amount ≤ 0, future date,
+            empty/too-long description, invalid payment method, invalid
+            category — or owner_not_in_group when paidByMemberId is not an
+            active member of the session's group.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthenticated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Authenticated but not a member of a family group.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sid
+      description: Session cookie set by /api/v1/auth/login. Required on every endpoint.
+
+  schemas:
+    LogSpendingRequest:
+      type: object
+      additionalProperties: false
+      required: [description, amountCents, date, paymentMethod, paidByMemberId]
+      properties:
+        description:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Trimmed; 1–200 meaningful characters.
+        amountCents:
+          type: integer
+          minimum: 1
+          maximum: 2000000000
+          description: Amount actually paid, integer cents (> 0).
+        date:
+          type: string
+          format: date
+          description: |
+            Purchase date = payment date = due date. Must NOT be in the future
+            (FR-010). Governs the bill's month and budget attribution (Q1).
+          examples: ['2026-06-14']
+        paymentMethod:
+          type: string
+          enum: [CASH_OR_DEBIT, CREDIT_CARD]
+        paidByMemberId:
+          type: string
+          format: uuid
+          description: Responsible member; must be an active member of the group (Q3 — payer).
+        categoryId:
+          type: ['string', 'null']
+          format: uuid
+          description: Optional category.
+
+    Bill:
+      type: object
+      description: |
+        Unchanged from the feature-010 Bill envelope EXCEPT the nested
+        `payment` object (see BillPayment). Fields elided here for brevity;
+        authoritative shape is the 010 contract minus payment.expenseId.
+      required: [id, description, expectedAmountCents, dueDate, month, status,
+                 categoryId, ownerMemberId, recurringBillId, payment, isOverdue]
+      properties:
+        id: { type: string, format: uuid }
+        description: { type: string, maxLength: 200 }
+        expectedAmountCents: { type: integer, minimum: 1 }
+        dueDate: { type: string, format: date }
+        month: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+        status: { type: string, enum: [PENDING, PAID, CANCELLED] }
+        categoryId: { type: ['string', 'null'], format: uuid }
+        ownerMemberId:
+          type: ['string', 'null']
+          format: uuid
+          description: Null for quick-logged / migrated bills (Q3).
+        recurringBillId: { type: ['string', 'null'], format: uuid }
+        isOverdue: { type: boolean }
+        payment:
+          oneOf:
+            - $ref: '#/components/schemas/BillPayment'
+            - type: 'null'
+          description: Present iff status=PAID.
+
+    BillPayment:
+      type: object
+      description: |
+        MODIFIED in 011 — `expenseId` REMOVED; `paidByMember` ADDED so the
+        tracker can display the responsible member on PAID bills (Q3).
+      required: [paidDate, actualAmountCents, paidByMemberId, paymentMethod, paidByMember]
+      properties:
+        paidDate: { type: string, format: date }
+        actualAmountCents: { type: integer, minimum: 1 }
+        paidByMemberId: { type: string, format: uuid }
+        paymentMethod: { type: string, enum: [CASH_OR_DEBIT, CREDIT_CARD] }
+        paidByMember:
+          description: |
+            Responsible member display (id + name). Survives for ex-members
+            (the User row persists; only group membership ended) — US2
+            Scenario 4.
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+
+    ErrorResponse:
+      type: object
+      description: Flat error envelope reused across the API.
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Machine-readable code (e.g., validation.failed, owner_not_in_group).
+        message:
+          type: string
+          description: Human-readable message (PT-BR).
+        fieldErrors:
+          type: array
+          description: Present on validation errors (one entry per invalid field).
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field: { type: string }
+              code: { type: string }
+              message: { type: string }
