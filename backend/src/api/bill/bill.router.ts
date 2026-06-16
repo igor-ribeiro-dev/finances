@@ -9,6 +9,7 @@ import {
   payBillBody,
   updatePaymentBody,
   copyBillsBody,
+  logSpendingBody,
   zodErrorToFieldErrors,
 } from './bill.validators';
 import { listMonthBillsUseCase } from '../../application/bill/list-month-bills.use-case';
@@ -24,6 +25,7 @@ import {
   reactivateBillUseCase,
 } from '../../application/bill/cancel-bill.use-case';
 import { mapBillToResponse } from './bill.serializer';
+import { logSpendingUseCase } from '../../application/bill/log-spending.use-case';
 
 export const billRouter = Router();
 
@@ -55,6 +57,41 @@ billRouter.get('/', async (req: Request, res: Response) => {
   } catch (err) {
     if (err instanceof AppError) {
       sendError(res, err.status ?? 500, err.code, err.message);
+      return;
+    }
+    console.error(err);
+    sendError(res, 500, 'internal_error', 'Erro interno.');
+  }
+});
+
+billRouter.post('/log', async (req: Request, res: Response) => {
+  const userId = res.locals['userId'] as string;
+  const groupId = res.locals['groupId'] as string;
+  const t0 = Date.now();
+
+  const body = logSpendingBody.safeParse(req.body);
+  if (!body.success) {
+    sendValidationError(res, zodErrorToFieldErrors(body.error));
+    return;
+  }
+
+  try {
+    const bill = await logSpendingUseCase({ userId, groupId, body: body.data });
+    console.log(
+      JSON.stringify({
+        event: 'bill.log_spending',
+        action: 'log_spending',
+        outcome: 'success',
+        userId,
+        groupId,
+        billId: bill.id,
+        durationMs: Date.now() - t0,
+      }),
+    );
+    res.status(201).json({ bill: mapBillToResponse(bill) });
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.status ?? 400, err.code, err.message);
       return;
     }
     console.error(err);
@@ -263,7 +300,7 @@ billRouter.delete('/:id/payment', async (req: Request, res: Response) => {
   const t0 = Date.now();
 
   try {
-    const bill = await revertPaymentUseCase(groupId, id as string);
+    const bill = await revertPaymentUseCase(groupId, id as string, userId);
     logMutation({
       action: 'revert_payment',
       outcome: 'success',

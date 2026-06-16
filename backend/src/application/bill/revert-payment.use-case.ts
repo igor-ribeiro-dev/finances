@@ -1,8 +1,7 @@
 import { AppError } from '../../api/errors';
-import { prisma } from '../../infra/prisma';
 import { billRepository } from '../../domain/bill/bill.repository';
 
-export async function revertPaymentUseCase(groupId: string, id: string) {
+export async function revertPaymentUseCase(groupId: string, id: string, userId: string) {
   const existing = await billRepository.findById(id, groupId);
   if (!existing) throw new AppError('bill.not_found', 'Conta não encontrada.', 404);
   if (existing.status !== 'PAID') {
@@ -13,21 +12,12 @@ export async function revertPaymentUseCase(groupId: string, id: string) {
     );
   }
 
-  return prisma.$transaction(async (tx) => {
-    if (existing.expenseId) {
-      await tx.expense.delete({ where: { id: existing.expenseId } });
-    }
-    return billRepository.update(
-      id,
-      {
-        status: 'PENDING',
-        paidDate: null,
-        actualAmountCents: null,
-        paidByMemberId: null,
-        paymentMethod: null,
-        expenseId: null,
-      },
-      tx,
-    );
+  return billRepository.update(id, {
+    status: 'PENDING',
+    paidDate: null,
+    actualAmountCents: null,
+    paidByMemberId: null,
+    paymentMethod: null,
+    updatedById: userId,
   });
 }

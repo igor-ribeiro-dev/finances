@@ -1,5 +1,4 @@
 import { AppError } from '../../api/errors';
-import { prisma } from '../../infra/prisma';
 import { billRepository } from '../../domain/bill/bill.repository';
 
 export interface UpdatePaymentInput {
@@ -27,29 +26,11 @@ export async function updatePaymentUseCase(input: UpdatePaymentInput) {
     );
   }
 
-  return prisma.$transaction(async (tx) => {
-    if (existing.expenseId) {
-      await tx.expense.update({
-        where: { id: existing.expenseId },
-        data: {
-          amountCents: body.actualAmountCents,
-          date: new Date(`${body.paidDate}T00:00:00Z`),
-          paymentMethod: body.paymentMethod,
-          ownerMemberId: body.paidByMemberId,
-          updatedById: userId,
-        },
-      });
-    }
-
-    return billRepository.update(
-      id,
-      {
-        paidDate: new Date(`${body.paidDate}T00:00:00Z`),
-        actualAmountCents: body.actualAmountCents,
-        paidByMemberId: body.paidByMemberId,
-        paymentMethod: body.paymentMethod,
-      },
-      tx,
-    );
+  return billRepository.update(id, {
+    paidDate: new Date(`${body.paidDate}T00:00:00Z`),
+    actualAmountCents: body.actualAmountCents,
+    paidByMemberId: body.paidByMemberId,
+    paymentMethod: body.paymentMethod,
+    updatedById: userId,
   });
 }

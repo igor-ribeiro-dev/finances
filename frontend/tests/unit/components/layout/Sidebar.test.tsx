@@ -60,11 +60,11 @@ beforeEach(() => {
 
 describe('Sidebar', () => {
   describe('Navigation items', () => {
-    it('renders all 6 navigation item labels', () => {
+    it('renders all 5 navigation item labels (Despesas removed in US3)', () => {
       renderSidebar('/');
 
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
-      expect(screen.getByText('Despesas')).toBeInTheDocument();
+      expect(screen.queryByText('Despesas')).not.toBeInTheDocument();
       expect(screen.getByText('Categorias')).toBeInTheDocument();
       expect(screen.getByText('Orçamentos')).toBeInTheDocument();
       expect(screen.getByText('Pagamentos')).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe('Sidebar', () => {
     });
 
     it('does not mark Dashboard as active when on a different path', () => {
-      renderSidebar('/despesas');
+      renderSidebar('/pagamentos');
 
       const dashboardLink = screen.getByRole('link', { name: /dashboard/i });
       expect(dashboardLink).not.toHaveAttribute('aria-current');

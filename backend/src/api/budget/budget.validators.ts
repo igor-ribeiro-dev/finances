@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export { zodErrorToFieldErrors } from '../expense/expense.validators';
+export { zodErrorToFieldErrors } from '../zod-helpers';
 
 /** Calendar month `YYYY-MM` (01–12). */
 export const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;

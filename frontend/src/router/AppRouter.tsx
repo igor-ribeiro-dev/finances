@@ -9,7 +9,6 @@ import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { OnboardingPage } from '../pages/OnboardingPage';
 import { DashboardPage } from '../pages/DashboardPage';
-import { ExpensesPage } from '../pages/ExpensesPage';
 import { CategoriesPage } from '../pages/CategoriesPage';
 import { BudgetsPage } from '../pages/BudgetsPage';
 import { PaymentsPage } from '../pages/PaymentsPage';
@@ -53,16 +52,7 @@ export function AppRouter() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/despesas"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <ExpensesPage />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/despesas" element={<Navigate to="/pagamentos" replace />} />
           <Route
             path="/categorias"
             element={

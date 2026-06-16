@@ -15,13 +15,12 @@ model User {
   familyGroup           FamilyGroup?         @relation(fields: [familyGroupId], references: [id])
   sessions              Session[]
   resetTokens           PasswordResetToken[]
-  expensesAuthored      Expense[]            @relation("ExpenseAuthor")
-  expensesEdited        Expense[]            @relation("ExpenseEditor")
-  expensesOwned         Expense[]            @relation("ExpenseOwner")
   idempotencyKeys       IdempotencyKey[]
   memberBudgets         Budget[]             @relation("MemberBudget")
   billsOwned            Bill[]               @relation("BillOwner")
   billsPaid             Bill[]               @relation("BillPayer")
+  billsAuthored         Bill[]               @relation("BillAuthor")
+  billsEdited           Bill[]               @relation("BillEditor")
   recurringBillsOwned   RecurringBill[]      @relation("RecurringBillOwner")
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
@@ -32,7 +31,6 @@ model FamilyGroup {
   name           String          @db.VarChar(100)
   members        User[]
   invite         Invite?
-  expenses       Expense[]
   categories     Category[]
   budgets        Budget[]
   bills          Bill[]
@@ -70,7 +68,6 @@ model Category {
   parentId       String?
   parent         Category?       @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
   children       Category[]      @relation("CategoryHierarchy")
-  expenses       Expense[]
   budgets        Budget[]
   bills          Bill[]
   recurringBills RecurringBill[]
@@ -82,30 +79,6 @@ model Category {
   updatedAt      DateTime        @updatedAt
 
   @@index([groupId], map: "category_group_idx")
-}
-
-model Expense {
-  id            String        @id @default(uuid())
-  groupId       String
-  group         FamilyGroup   @relation(fields: [groupId], references: [id])
-  amountCents   Int
-  date          DateTime      @db.Date
-  description   String        @db.VarChar(200)
-  paymentMethod PaymentMethod
-  ownerMemberId String
-  ownerMember   User          @relation("ExpenseOwner", fields: [ownerMemberId], references: [id])
-  createdById   String
-  createdBy     User          @relation("ExpenseAuthor", fields: [createdById], references: [id])
-  updatedById   String
-  updatedBy     User          @relation("ExpenseEditor", fields: [updatedById], references: [id])
-  categoryId    String?
-  category      Category?     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  bill          Bill?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  @@index([groupId, date(sort: Desc), id(sort: Desc)], map: "expense_group_date_id_idx")
-  @@index([categoryId], map: "expense_category_idx")
 }
 
 model IdempotencyKey {
@@ -171,7 +144,7 @@ model PasswordResetToken {
   createdAt DateTime  @default(now())
 }
 
-// ─── Feature 010: Monthly Payment Tracker ────────────────────────────────────
+// ─── Feature 010/011: Monthly Payment Tracker (Expense Consolidation) ────────
 
 enum BillStatus {
   PENDING
@@ -223,7 +196,7 @@ model Bill {
   month               DateTime       @db.Date
   status              BillStatus     @default(PENDING)
   categoryId          String?
-  category            Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category            Category?      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   ownerMemberId       String?
   ownerMember         User?          @relation("BillOwner", fields: [ownerMemberId], references: [id], onDelete: SetNull)
   recurringBillId     String?
@@ -234,12 +207,16 @@ model Bill {
   paidByMemberId      String?
   paidByMember        User?          @relation("BillPayer", fields: [paidByMemberId], references: [id], onDelete: SetNull)
   paymentMethod       PaymentMethod?
-  expenseId           String?        @unique
-  expense             Expense?       @relation(fields: [expenseId], references: [id], onDelete: Restrict)
+  // Authorship (FR-004, feature 011): nullable so legacy bills without an author remain valid
+  createdById         String?
+  createdBy           User?          @relation("BillAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById         String?
+  updatedBy           User?          @relation("BillEditor", fields: [updatedById], references: [id], onDelete: SetNull)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
   // Partial unique index (recurringBillId, month) WHERE recurringBillId IS NOT NULL
   // is declared as raw SQL in the migration — idempotency guarantee for the scheduler.
   @@index([groupId, month], map: "bill_group_month_idx")
+  @@index([groupId, paidDate], map: "bill_group_paiddate_idx")
 }

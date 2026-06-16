@@ -55,17 +55,17 @@ export const categoryRepository = {
     await client.category.delete({ where: { id } });
   },
 
-  /** Counts that block a delete (FR-013): sub-categories + expenses across the whole subtree. */
+  /** Counts that block a delete (FR-013): sub-categories + PAID bills across the whole subtree. */
   async previewDelete(id: string, groupId: string): Promise<CategoryBlockers> {
     const subs = await prisma.category.findMany({
       where: { parentId: id, groupId },
       select: { id: true },
     });
     const categoryIds = [id, ...subs.map((s) => s.id)];
-    const affectedExpensesCount = await prisma.expense.count({
+    const affectedBillsCount = await prisma.bill.count({
       where: { groupId, categoryId: { in: categoryIds } },
     });
-    return { subCategoriesCount: subs.length, affectedExpensesCount };
+    return { subCategoriesCount: subs.length, affectedBillsCount };
   },
 
   /** FR-011: a parentId must point to a ROOT category in the same group. */

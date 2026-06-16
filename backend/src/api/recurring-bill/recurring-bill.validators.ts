@@ -1,5 +1,5 @@
 import { z } from 'zod';
-export { zodErrorToFieldErrors } from '../expense/expense.validators';
+export { zodErrorToFieldErrors } from '../zod-helpers';
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const uuid = z.string().uuid('Identificador inválido.');

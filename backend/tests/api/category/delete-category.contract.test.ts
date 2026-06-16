@@ -1,3 +1,4 @@
+// T028 (US3) — category delete blocked by PAID Bills, not Expenses.
 import request from 'supertest';
 import { createApp } from '../../../src/app';
 
@@ -6,7 +7,7 @@ jest.mock('../../../src/infra/prisma', () => ({
     session: { findUnique: jest.fn(), update: jest.fn() },
     user: { findUnique: jest.fn() },
     category: { findFirst: jest.fn(), delete: jest.fn(), findMany: jest.fn() },
-    expense: { count: jest.fn() },
+    bill: { count: jest.fn() },
   },
 }));
 
@@ -20,7 +21,7 @@ const category = prisma.category as unknown as {
   delete: jest.Mock;
   findMany: jest.Mock;
 };
-const expense = prisma.expense as unknown as { count: jest.Mock };
+const bill = prisma.bill as unknown as { count: jest.Mock };
 
 const CAT_ID = 'dddddddd-1111-4abc-8def-111111111111';
 
@@ -62,17 +63,17 @@ describe('DELETE /api/v1/categories/:id', () => {
     expect(res.status).toBe(204);
   });
 
-  it('returns 409 has_dependencies with blockers when sub-categories/expenses exist', async () => {
+  it('returns 409 has_dependencies with blockers when sub-categories/bills exist', async () => {
     setupAuthedMember();
     category.findFirst.mockResolvedValue(cat());
     category.delete.mockRejectedValue({ code: 'P2003' });
     category.findMany.mockResolvedValue([{ id: 's1' }, { id: 's2' }]); // 2 subs
-    expense.count.mockResolvedValue(7);
+    bill.count.mockResolvedValue(7);
 
     const res = await authedDelete();
     expect(res.status).toBe(409);
     expect(res.body.code).toBe('category.has_dependencies');
-    expect(res.body.blockers).toEqual({ subCategoriesCount: 2, affectedExpensesCount: 7 });
+    expect(res.body.blockers).toEqual({ subCategoriesCount: 2, affectedBillsCount: 7 });
   });
 
   it('returns 404 when the category is not in the group', async () => {

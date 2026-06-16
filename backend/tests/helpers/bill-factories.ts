@@ -1,7 +1,8 @@
 /**
- * Test factory helpers for Bill and RecurringBill models (feature 010).
+ * Test factory helpers for Bill and RecurringBill models (feature 010/011).
  * Returns properly-typed mock objects for use in jest mocks.
  */
+import { prisma } from '../../src/infra/prisma';
 
 export type BillStatus = 'PENDING' | 'PAID' | 'CANCELLED';
 export type RecurrenceInterval = 'MONTHLY' | 'ANNUAL';
@@ -23,7 +24,8 @@ export interface MockBill {
   actualAmountCents: number | null;
   paidByMemberId: string | null;
   paymentMethod: PaymentMethod | null;
-  expenseId: string | null;
+  createdById: string | null;
+  updatedById: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,7 +63,8 @@ export function createBillInDb(overrides: Partial<MockBill> = {}): MockBill {
     actualAmountCents: null,
     paidByMemberId: null,
     paymentMethod: null,
-    expenseId: null,
+    createdById: null,
+    updatedById: null,
     createdAt: new Date('2026-06-01T10:00:00Z'),
     updatedAt: new Date('2026-06-01T10:00:00Z'),
     ...overrides,
@@ -73,7 +76,6 @@ export function createBillInDb(overrides: Partial<MockBill> = {}): MockBill {
     base.actualAmountCents = base.expectedAmountCents;
     base.paidByMemberId = 'user-ana';
     base.paymentMethod = 'CASH_OR_DEBIT';
-    base.expenseId = 'exp-1';
   }
 
   // Clear payment fields if not PAID
@@ -82,7 +84,6 @@ export function createBillInDb(overrides: Partial<MockBill> = {}): MockBill {
     base.actualAmountCents = null;
     base.paidByMemberId = null;
     base.paymentMethod = null;
-    base.expenseId = null;
   }
 
   // Apply overrides again after invariant enforcement (allows explicit override)
@@ -96,7 +97,6 @@ export function createPaidBill(overrides: Partial<MockBill> = {}): MockBill {
     actualAmountCents: 198750,
     paidByMemberId: 'user-ana',
     paymentMethod: 'CASH_OR_DEBIT',
-    expenseId: 'exp-1',
     ...overrides,
   });
 }
@@ -125,4 +125,34 @@ export function createRecurringBillInDb(
     updatedAt: new Date('2026-06-01T10:00:00Z'),
     ...overrides,
   };
+}
+
+/**
+ * Seeds a legacy Expense row directly into the DB using $executeRaw.
+ * Used by the migration conversion test (T018) to set up pre-migration state.
+ */
+export async function seedLegacyExpense(data: {
+  id: string;
+  groupId: string;
+  amountCents: number;
+  date: Date;
+  description: string;
+  paymentMethod: 'CASH_OR_DEBIT' | 'CREDIT_CARD';
+  ownerMemberId: string;
+  createdById: string;
+  updatedById: string;
+  categoryId?: string | null;
+}): Promise<void> {
+  await prisma.$executeRaw`
+    INSERT INTO "Expense" (
+      id, "groupId", "amountCents", date, description, "paymentMethod",
+      "ownerMemberId", "createdById", "updatedById", "categoryId",
+      "createdAt", "updatedAt"
+    ) VALUES (
+      ${data.id}, ${data.groupId}, ${data.amountCents}, ${data.date},
+      ${data.description}, ${data.paymentMethod}::"PaymentMethod",
+      ${data.ownerMemberId}, ${data.createdById}, ${data.updatedById},
+      ${data.categoryId ?? null}, NOW(), NOW()
+    )
+  `;
 }

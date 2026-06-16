@@ -1,4 +1,4 @@
-import { LayoutDashboard, Receipt, Tag, PiggyBank, CalendarClock, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Tag, PiggyBank, CalendarClock, CreditCard } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type NavItemStatus = 'active' | 'coming-soon';
@@ -17,13 +17,6 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Dashboard',
     path: '/',
     icon: LayoutDashboard,
-    status: 'active',
-  },
-  {
-    id: 'despesas',
-    label: 'Despesas',
-    path: '/despesas',
-    icon: Receipt,
     status: 'active',
   },
   {

@@ -1,3 +1,4 @@
+// T021 (US2) — update-payment: no longer syncs an Expense (simplified use case).
 import request from 'supertest';
 import { createApp } from '../../../src/app';
 import { createBillInDb, createPaidBill } from '../../helpers/bill-factories';
@@ -15,8 +16,6 @@ jest.mock('../../../src/infra/prisma', () => ({
       createMany: jest.fn(),
     },
     recurringBill: { findMany: jest.fn() },
-    expense: { create: jest.fn(), update: jest.fn(), delete: jest.fn(), findFirst: jest.fn() },
-    $transaction: jest.fn(),
   },
 }));
 
@@ -27,12 +26,6 @@ const app = createApp();
 const session = prisma.session as unknown as { findUnique: jest.Mock; update: jest.Mock };
 const user = prisma.user as unknown as { findUnique: jest.Mock; findFirst: jest.Mock };
 const bill = prisma.bill as unknown as { findFirst: jest.Mock; update: jest.Mock };
-const expense = prisma.expense as unknown as {
-  create: jest.Mock;
-  update: jest.Mock;
-  delete: jest.Mock;
-};
-const transaction = prisma.$transaction as jest.Mock;
 
 function setupAuthedMember(groupId = 'group-1') {
   session.findUnique.mockResolvedValue({
@@ -60,9 +53,9 @@ const validUpdatePaymentBody = {
 describe('PATCH /api/v1/bills/:id/payment', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('200: PAID bill updates payment; expense.update called with new values', async () => {
+  it('200: PAID bill updates payment; no Expense sync (US2 simplification)', async () => {
     setupAuthedMember();
-    const paid = createPaidBill({ id: 'bill-paid', expenseId: 'exp-1' });
+    const paid = createPaidBill({ id: 'bill-paid' });
     bill.findFirst.mockResolvedValue(mockBillWithRelations(paid));
 
     const updatedBill = mockBillWithRelations(
@@ -71,15 +64,9 @@ describe('PATCH /api/v1/bills/:id/payment', () => {
         paidDate: new Date('2026-06-15T00:00:00Z'),
         actualAmountCents: 200000,
         paymentMethod: 'CREDIT_CARD',
-        expenseId: 'exp-1',
       }),
     );
-    expense.update.mockResolvedValue({});
     bill.update.mockResolvedValue(updatedBill);
-
-    transaction.mockImplementation((fn: (tx: typeof prisma) => Promise<unknown>) =>
-      fn(prisma as unknown as Parameters<typeof fn>[0]),
-    );
 
     const res = await request(app as Parameters<typeof request>[0])
       .patch('/api/v1/bills/bill-paid/payment')
@@ -93,16 +80,17 @@ describe('PATCH /api/v1/bills/:id/payment', () => {
     expect(res.body.bill.payment.actualAmountCents).toBe(200000);
     expect(res.body.bill.payment.paymentMethod).toBe('CREDIT_CARD');
 
-    expect(expense.update).toHaveBeenCalledWith(
+    // Only bill.update called — no expense interaction.
+    expect(bill.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'exp-1' },
         data: expect.objectContaining({
-          amountCents: 200000,
+          actualAmountCents: 200000,
           paymentMethod: 'CREDIT_CARD',
-          ownerMemberId: MEMBER_UUID,
+          paidByMemberId: MEMBER_UUID,
         }),
       }),
     );
+    expect('expense' in prisma).toBe(false);
   });
 
   it('409: PENDING bill returns bill.invalid_transition', async () => {

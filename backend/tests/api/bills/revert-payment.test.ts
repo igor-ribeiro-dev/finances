@@ -1,3 +1,4 @@
+// T021 (US2) — revert-payment: no longer deletes an Expense (simplified use case).
 import request from 'supertest';
 import { createApp } from '../../../src/app';
 import { createBillInDb, createPaidBill, createCancelledBill } from '../../helpers/bill-factories';
@@ -15,8 +16,6 @@ jest.mock('../../../src/infra/prisma', () => ({
       createMany: jest.fn(),
     },
     recurringBill: { findMany: jest.fn() },
-    expense: { create: jest.fn(), update: jest.fn(), delete: jest.fn(), findFirst: jest.fn() },
-    $transaction: jest.fn(),
   },
 }));
 
@@ -27,12 +26,6 @@ const app = createApp();
 const session = prisma.session as unknown as { findUnique: jest.Mock; update: jest.Mock };
 const user = prisma.user as unknown as { findUnique: jest.Mock; findFirst: jest.Mock };
 const bill = prisma.bill as unknown as { findFirst: jest.Mock; update: jest.Mock };
-const expense = prisma.expense as unknown as {
-  create: jest.Mock;
-  update: jest.Mock;
-  delete: jest.Mock;
-};
-const transaction = prisma.$transaction as jest.Mock;
 
 function setupAuthedMember(groupId = 'group-1') {
   session.findUnique.mockResolvedValue({
@@ -48,23 +41,18 @@ function mockBillWithRelations(base: ReturnType<typeof createBillInDb>) {
   return { ...base, category: null, ownerMember: null, paidByMember: null };
 }
 
-describe('DELETE /api/v1/bills/:id/payment (T058)', () => {
+describe('DELETE /api/v1/bills/:id/payment', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('200: PAID bill transitions to PENDING; expense.delete called; payment is null', async () => {
+  it('200: PAID bill transitions to PENDING; no Expense deletion (US2 simplification)', async () => {
     setupAuthedMember();
-    const paid = createPaidBill({ id: 'bill-paid', expenseId: 'exp-1' });
+    const paid = createPaidBill({ id: 'bill-paid' });
     bill.findFirst.mockResolvedValue(mockBillWithRelations(paid));
 
-    expense.delete.mockResolvedValue({});
     const revertedBill = mockBillWithRelations(
       createBillInDb({ id: 'bill-paid', status: 'PENDING' }),
     );
     bill.update.mockResolvedValue(revertedBill);
-
-    transaction.mockImplementation((fn: (tx: typeof prisma) => Promise<unknown>) =>
-      fn(prisma as unknown as Parameters<typeof fn>[0]),
-    );
 
     const res = await request(app as Parameters<typeof request>[0])
       .delete('/api/v1/bills/bill-paid/payment')
@@ -73,7 +61,8 @@ describe('DELETE /api/v1/bills/:id/payment (T058)', () => {
     expect(res.status).toBe(200);
     expect(res.body.bill.status).toBe('PENDING');
     expect(res.body.bill.payment).toBeNull();
-    expect(expense.delete).toHaveBeenCalledWith({ where: { id: 'exp-1' } });
+
+    // Only bill.update called — no expense interaction.
     expect(bill.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -82,10 +71,10 @@ describe('DELETE /api/v1/bills/:id/payment (T058)', () => {
           actualAmountCents: null,
           paidByMemberId: null,
           paymentMethod: null,
-          expenseId: null,
         }),
       }),
     );
+    expect('expense' in prisma).toBe(false);
   });
 
   it('409: PENDING bill returns bill.invalid_transition', async () => {

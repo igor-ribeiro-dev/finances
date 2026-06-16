@@ -103,6 +103,7 @@ describe('BillChecklist', () => {
           actualAmountCents: 150000,
           paidByMemberId: 'm-1',
           paymentMethod: 'CASH_OR_DEBIT',
+          paidByMember: null,
         },
       }),
     ];

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
-export { idempotencyKeyHeader, zodErrorToFieldErrors } from '../expense/expense.validators';
+export { zodErrorToFieldErrors } from '../zod-helpers';
+
+export const idempotencyKeyHeader = z.string().uuid().optional();
 
 const nameSchema = z
   .string({ message: 'O nome é obrigatório.' })

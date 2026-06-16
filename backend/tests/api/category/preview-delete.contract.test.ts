@@ -1,3 +1,4 @@
+// T028 (US3) — category delete preview counts PAID Bills, not Expenses.
 import request from 'supertest';
 import { createApp } from '../../../src/app';
 
@@ -6,7 +7,7 @@ jest.mock('../../../src/infra/prisma', () => ({
     session: { findUnique: jest.fn(), update: jest.fn() },
     user: { findUnique: jest.fn() },
     category: { findFirst: jest.fn(), findMany: jest.fn() },
-    expense: { count: jest.fn() },
+    bill: { count: jest.fn() },
   },
 }));
 
@@ -16,7 +17,7 @@ const app = createApp();
 const session = prisma.session as unknown as { findUnique: jest.Mock; update: jest.Mock };
 const user = prisma.user as unknown as { findUnique: jest.Mock };
 const category = prisma.category as unknown as { findFirst: jest.Mock; findMany: jest.Mock };
-const expense = prisma.expense as unknown as { count: jest.Mock };
+const bill = prisma.bill as unknown as { count: jest.Mock };
 
 const CAT_ID = 'dddddddd-1111-4abc-8def-111111111111';
 
@@ -50,34 +51,34 @@ function cat() {
 describe('GET /api/v1/categories/:id/delete-preview', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('returns 200 counts for a sub-category with expenses (0 subs)', async () => {
+  it('returns 200 counts for a sub-category with bills (0 subs)', async () => {
     setupAuthedMember();
     category.findFirst.mockResolvedValue(cat());
     category.findMany.mockResolvedValue([]); // no subs
-    expense.count.mockResolvedValue(5);
+    bill.count.mockResolvedValue(5);
     const res = await authedGet();
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ subCategoriesCount: 0, affectedExpensesCount: 5 });
+    expect(res.body).toEqual({ subCategoriesCount: 0, affectedBillsCount: 5 });
   });
 
-  it('returns 200 counts for a root with subs and expenses across the subtree', async () => {
+  it('returns 200 counts for a root with subs and bills across the subtree', async () => {
     setupAuthedMember();
     category.findFirst.mockResolvedValue(cat());
     category.findMany.mockResolvedValue([{ id: 's1' }, { id: 's2' }, { id: 's3' }]);
-    expense.count.mockResolvedValue(12);
+    bill.count.mockResolvedValue(12);
     const res = await authedGet();
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ subCategoriesCount: 3, affectedExpensesCount: 12 });
+    expect(res.body).toEqual({ subCategoriesCount: 3, affectedBillsCount: 12 });
   });
 
   it('returns 200 zero counts for an empty new category', async () => {
     setupAuthedMember();
     category.findFirst.mockResolvedValue(cat());
     category.findMany.mockResolvedValue([]);
-    expense.count.mockResolvedValue(0);
+    bill.count.mockResolvedValue(0);
     const res = await authedGet();
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ subCategoriesCount: 0, affectedExpensesCount: 0 });
+    expect(res.body).toEqual({ subCategoriesCount: 0, affectedBillsCount: 0 });
   });
 
   it('returns 404 when the category is not in the group', async () => {
