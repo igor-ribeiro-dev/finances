@@ -1,0 +1,249 @@
+openapi: 3.0.3
+info:
+  title: Credit Card Management API (feature 012)
+  version: 1.0.0
+  description: >
+    Endpoints novos e campos aditivos para o gerenciamento de cartões de crédito.
+    Todas as rotas exigem autenticação (cookie de sessão) e pertencimento a um
+    grupo familiar (requireMembership). Valores monetários em centavos (Int).
+    Mensagens em PT-BR. Apenas adições — nenhum contrato existente é quebrado.
+servers:
+  - url: /api/v1
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        fieldErrors:
+          type: object
+          additionalProperties: { type: string }
+    CreditCard:
+      type: object
+      required: [id, name, closingDay, status, openChargesCents]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, maxLength: 60 }
+        closingDay: { type: integer, minimum: 1, maximum: 31 }
+        status: { type: string, enum: [ACTIVE, ARCHIVED] }
+        openChargesCents:
+          type: integer
+          description: Soma das compras em aberto (não quitadas por fatura paga).
+    OpenCharge:
+      type: object
+      required: [id, description, actualAmountCents, paidDate]
+      properties:
+        id: { type: string, format: uuid }
+        description: { type: string }
+        actualAmountCents: { type: integer }
+        paidDate: { type: string, format: date }
+        paidByMember:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            name: { type: string }
+        category:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            name: { type: string }
+    CreditCardDetail:
+      allOf:
+        - $ref: '#/components/schemas/CreditCard'
+        - type: object
+          properties:
+            openCharges:
+              type: array
+              items: { $ref: '#/components/schemas/OpenCharge' }
+    CreateCardBody:
+      type: object
+      required: [name, closingDay]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 60 }
+        closingDay: { type: integer, minimum: 1, maximum: 31 }
+    UpdateCardBody:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 60 }
+        closingDay: { type: integer, minimum: 1, maximum: 31 }
+    RegisterFaturaBody:
+      type: object
+      required: [expectedAmountCents, dueDate]
+      properties:
+        expectedAmountCents: { type: integer, minimum: 1 }
+        dueDate: { type: string, format: date }
+        description: { type: string, maxLength: 200 }
+
+security:
+  - sessionCookie: []
+
+paths:
+  /credit-cards:
+    get:
+      summary: Lista cartões do grupo (com total em aberto por cartão)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cards:
+                    type: array
+                    items: { $ref: '#/components/schemas/CreditCard' }
+        '401': { description: Não autenticado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Sem grupo, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    post:
+      summary: Registra um novo cartão (FR-001)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCardBody' }
+      responses:
+        '201':
+          description: Criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  card: { $ref: '#/components/schemas/CreditCard' }
+        '400':
+          description: Validação (nome vazio/duplicado entre ativos, fechamento fora de 1–31)
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /credit-cards/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Visão por cartão — compras em aberto + total corrente (FR-006)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  card: { $ref: '#/components/schemas/CreditCardDetail' }
+        '404': { description: Cartão não encontrado no grupo, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    patch:
+      summary: Renomeia / altera dia de fechamento (FR-001)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCardBody' }
+      responses:
+        '200':
+          description: Atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  card: { $ref: '#/components/schemas/CreditCard' }
+        '400': { description: Validação, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Não encontrado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    delete:
+      summary: Deleta um cartão — bloqueado se houver contas vinculadas (FR-002)
+      responses:
+        '204': { description: Deletado }
+        '409':
+          description: Cartão com compras/faturas (credit_card.has_bills) — use arquivar
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '404': { description: Não encontrado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /credit-cards/{id}/archive:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Arquiva o cartão (FR-002)
+      responses:
+        '200':
+          description: Arquivado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  card: { $ref: '#/components/schemas/CreditCard' }
+        '404': { description: Não encontrado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /credit-cards/{id}/faturas:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Registra a fatura do cartão como conta PENDING (FR-005/FR-008)
+      description: >
+        Ação dedicada — único caminho para criar uma fatura. Cria uma Bill com
+        isFatura=true. Bloqueia se já houver fatura pendente do cartão (FR-012a).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterFaturaBody' }
+      responses:
+        '201':
+          description: Fatura criada (Bill isFatura=true, PENDING)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bill:
+                    type: object
+                    description: Envelope de conta (ver bill.serializer), com creditCard e isFatura=true
+        '400': { description: Validação (valor<=0, data inválida), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409':
+          description: Já existe fatura pendente para este cartão (fatura.pending_exists)
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '404': { description: Cartão não encontrado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ── Campos aditivos em endpoints existentes do módulo bill ──────────────────
+  /bills/log:
+    post:
+      summary: "MODIFICADO: registrar gasto agora aceita creditCardId"
+      description: >
+        Campo aditivo creditCardId. Regra: paymentMethod=CREDIT_CARD ⇒
+        creditCardId obrigatório (cartão ativo do grupo); CASH_OR_DEBIT ⇒
+        creditCardId ausente (FR-003). Resposta inclui creditCard no envelope.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                creditCardId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: Obrigatório quando paymentMethod=CREDIT_CARD.
+      responses:
+        '201': { description: Conta criada (PAID) com creditCard quando crédito }
+        '400':
+          description: >
+            creditCardId ausente em método crédito (credit_card.required) ou
+            presente em débito (credit_card.not_allowed), ou cartão inativo/inexistente.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }

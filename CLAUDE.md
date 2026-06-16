@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/011-expense-consolidation/plan.md
+at specs/012-credit-card-management/plan.md
 <!-- SPECKIT END -->
