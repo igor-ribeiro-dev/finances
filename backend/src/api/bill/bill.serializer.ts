@@ -27,6 +27,9 @@ export function mapBillToResponse(bill: BillWithRelations) {
     ownerMemberId: bill.ownerMemberId,
     ownerMember: bill.ownerMember ? { id: bill.ownerMember.id, name: bill.ownerMember.name } : null,
     recurringBillId: bill.recurringBillId,
+    creditCardId: bill.creditCardId,
+    creditCard: bill.creditCard ? { id: bill.creditCard.id, name: bill.creditCard.name } : null,
+    isFatura: bill.isFatura,
     payment:
       bill.status === 'PAID' && bill.paidDate
         ? {

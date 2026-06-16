@@ -61,6 +61,22 @@ export const DashboardErrorCode = {
   invalidMonth: 'dashboard.invalid_month',
 } as const;
 
+/** Machine-readable error codes introduced by feature 012 (credit cards). */
+export const CreditCardErrorCode = {
+  duplicateName: 'credit_card.duplicate_name',
+  notFound: 'credit_card.not_found',
+  hasBills: 'credit_card.has_bills',
+  // Cross-field rules on a credit-card spending (FR-003)
+  required: 'credit_card.required',
+  notAllowed: 'credit_card.not_allowed',
+  notActive: 'credit_card.not_active',
+} as const;
+
+/** Fatura-specific error codes (feature 012). */
+export const FaturaErrorCode = {
+  pendingExists: 'fatura.pending_exists',
+} as const;
+
 export function sendError(
   res: Response,
   status: number,

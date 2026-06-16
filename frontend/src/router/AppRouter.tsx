@@ -12,6 +12,7 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { CategoriesPage } from '../pages/CategoriesPage';
 import { BudgetsPage } from '../pages/BudgetsPage';
 import { PaymentsPage } from '../pages/PaymentsPage';
+import { CreditCardsPage } from '../pages/CreditCardsPage';
 
 function SessionExpiredHandler() {
   const navigate = useNavigate();
@@ -88,7 +89,7 @@ export function AppRouter() {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <div className="p-8 text-gray-500">Em breve</div>
+                  <CreditCardsPage />
                 </AppLayout>
               </ProtectedRoute>
             }

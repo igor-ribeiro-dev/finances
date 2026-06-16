@@ -45,6 +45,6 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Cartões de Crédito',
     path: '/cartoes',
     icon: CreditCard,
-    status: 'coming-soon',
+    status: 'active',
   },
 ];

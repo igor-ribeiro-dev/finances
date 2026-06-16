@@ -1,4 +1,5 @@
 import { AppError } from '../../api/errors';
+import { prisma } from '../../infra/prisma';
 import { billRepository } from '../../domain/bill/bill.repository';
 
 export async function revertPaymentUseCase(groupId: string, id: string, userId: string) {
@@ -12,12 +13,24 @@ export async function revertPaymentUseCase(groupId: string, id: string, userId: 
     );
   }
 
-  return billRepository.update(id, {
-    status: 'PENDING',
+  const revertData = {
+    status: 'PENDING' as const,
     paidDate: null,
     actualAmountCents: null,
     paidByMemberId: null,
     paymentMethod: null,
     updatedById: userId,
-  });
+  };
+
+  // FR-009: reverting a fatura restores exactly the charges it had settled,
+  // atomically with the revert.
+  if (existing.isFatura) {
+    return prisma.$transaction(async (tx) => {
+      const bill = await billRepository.update(id, revertData, tx);
+      await billRepository.unsettleByFatura(id, tx);
+      return bill;
+    });
+  }
+
+  return billRepository.update(id, revertData);
 }

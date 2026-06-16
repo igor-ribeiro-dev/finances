@@ -64,6 +64,14 @@ export const updateBillBody = z.object({
   ownerMemberId: uuid.nullable().optional(),
 });
 
+/**
+ * creditCardId is optional at the schema level; the cross-field rule
+ * (required for CREDIT_CARD, forbidden for CASH_OR_DEBIT) and the
+ * active-card-in-group check are enforced in the use-case layer so the
+ * machine codes credit_card.required / not_allowed / not_active surface (FR-003).
+ */
+const creditCardIdField = uuid.nullable().optional();
+
 export const payBillBody = z.object({
   paidDate: dueDateField,
   actualAmountCents: expectedAmountCentsField,
@@ -71,6 +79,7 @@ export const payBillBody = z.object({
   paymentMethod: z.enum(['CASH_OR_DEBIT', 'CREDIT_CARD'], {
     message: 'Método de pagamento inválido.',
   }),
+  creditCardId: creditCardIdField,
 });
 
 export const updatePaymentBody = payBillBody;
@@ -91,6 +100,7 @@ export const logSpendingBody = z.object({
   }),
   paidByMemberId: uuid,
   categoryId: uuid.nullable().optional(),
+  creditCardId: creditCardIdField,
 });
 
 export type LogSpendingBody = z.infer<typeof logSpendingBody>;

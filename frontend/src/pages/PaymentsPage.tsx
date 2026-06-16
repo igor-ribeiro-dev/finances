@@ -7,6 +7,7 @@ import { CopyPreviousMonthButton } from '../components/bills/CopyPreviousMonthBu
 import { MonthBillsSummary } from '../components/bills/MonthBillsSummary';
 import { QuickLogModal } from '../components/bills/QuickLogModal';
 import { RecurringBillsSection } from '../components/bills/RecurringBillsSection';
+import { CreditCardSummarySection } from '../components/credit-cards/CreditCardSummarySection';
 import { Toast, type ToastState } from '../components/Toast';
 import { useMonthBills } from '../hooks/useMonthBills';
 import { currentMonth } from '../utils/month';
@@ -124,6 +125,8 @@ export function PaymentsPage() {
       {data && (
         <MonthBillsSummary summary={data.summary} projectedCents={data.summary.projectedCents} />
       )}
+
+      <CreditCardSummarySection />
 
       <BillChecklist
         bills={data?.bills ?? []}

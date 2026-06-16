@@ -28,6 +28,7 @@ export interface LogSpendingRequest {
   paymentMethod: PaymentMethod;
   paidByMemberId: string;
   categoryId?: string | null;
+  creditCardId?: string | null; // required when paymentMethod = CREDIT_CARD (FR-003)
 }
 
 export interface Bill {
@@ -44,6 +45,11 @@ export interface Bill {
   ownerMemberId: string | null;
   ownerMember: BillMemberRef | null;
   recurringBillId: string | null;
+  // Feature 012 — always present in API responses; optional here so older test
+  // fixtures and call sites that predate credit cards still type-check.
+  creditCardId?: string | null;
+  creditCard?: { id: string; name: string } | null;
+  isFatura?: boolean;
   payment: BillPayment | null;
 }
 
@@ -112,6 +118,7 @@ export interface PayBillBody {
   actualAmountCents: number;
   paidByMemberId: string;
   paymentMethod: PaymentMethod;
+  creditCardId?: string | null; // required when paymentMethod = CREDIT_CARD (FR-003)
 }
 
 export type UpdatePaymentBody = PayBillBody;

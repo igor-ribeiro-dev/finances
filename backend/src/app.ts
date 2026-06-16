@@ -9,6 +9,7 @@ import { budgetRouter } from './api/budget/budget.router';
 import { dashboardRouter } from './api/dashboard/dashboard.router';
 import { billRouter } from './api/bill/bill.router';
 import { recurringBillRouter } from './api/recurring-bill/recurring-bill.router';
+import { creditCardRouter } from './api/credit-card/credit-card.router';
 
 export function createApp(): express.Application {
   const app = express();
@@ -30,6 +31,7 @@ export function createApp(): express.Application {
   app.use('/api/v1/dashboard', dashboardRouter);
   app.use('/api/v1/bills', billRouter);
   app.use('/api/v1/recurring-bills', recurringBillRouter);
+  app.use('/api/v1/credit-cards', creditCardRouter);
 
   return app;
 }
