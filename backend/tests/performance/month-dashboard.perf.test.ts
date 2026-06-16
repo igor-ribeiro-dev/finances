@@ -1,5 +1,5 @@
 /**
- * T032 — SC-002 automated proxy: the month dashboard for 500 expenses,
+ * T032 — SC-002 automated proxy: the month dashboard for 500 PAID bills,
  * 10 members and 50 categories must resolve well under the 2s end-to-end
  * target (backend budget: avg < 200ms, p95 < 350ms). Runs against a real
  * Postgres and also re-checks data-model.md invariants 1–2 at scale.
@@ -71,28 +71,35 @@ describePerf('month dashboard performance (SC-002)', () => {
         },
       });
 
-      // 500 expenses spread across members/categories (1 in 10 uncategorized).
+      // 500 PAID bills spread across members/categories (1 in 10 uncategorized).
       const day = (i: number) => String((i % 28) + 1).padStart(2, '0');
+      const paidDate = (i: number) => new Date(`2026-06-${day(i)}T00:00:00Z`);
       const rows = Array.from({ length: 500 }, (_, i) => ({
         id: randomUUID(),
         groupId,
-        amountCents: 1000 + i,
-        date: new Date(`2026-06-${day(i)}`),
-        description: `Despesa perf ${i}`,
+        description: `Conta perf ${i}`,
+        expectedAmountCents: 1000 + i,
+        actualAmountCents: 1000 + i,
+        dueDate: paidDate(i),
+        month: new Date(Date.UTC(2026, 5, 1)),
+        status: 'PAID' as const,
+        paidDate: paidDate(i),
         paymentMethod: (i % 2 === 0 ? 'CASH_OR_DEBIT' : 'CREDIT_CARD') as
           | 'CASH_OR_DEBIT'
           | 'CREDIT_CARD',
-        ownerMemberId: memberIds[i % memberIds.length] as string,
+        paidByMemberId: memberIds[i % memberIds.length] as string,
         categoryId: i % 10 === 0 ? null : (categoryIds[i % categoryIds.length] as string),
+        ownerMemberId: null as string | null,
+        recurringBillId: null as string | null,
         createdById: memberIds[0] as string,
         updatedById: memberIds[0] as string,
       }));
-      await tx.expense.createMany({ data: rows });
+      await tx.bill.createMany({ data: rows });
     });
   });
 
   afterAll(async () => {
-    await prisma.expense.deleteMany({ where: { groupId } });
+    await prisma.bill.deleteMany({ where: { groupId } });
     await prisma.budget.deleteMany({ where: { groupId } });
     await prisma.category.deleteMany({ where: { groupId, parentId: { not: null } } });
     await prisma.category.deleteMany({ where: { groupId } });
@@ -101,7 +108,7 @@ describePerf('month dashboard performance (SC-002)', () => {
     await prisma.$disconnect();
   });
 
-  it('answers a 500-expense month within budget and keeps the invariants', async () => {
+  it('answers a 500-bill month within budget and keeps the invariants', async () => {
     const durations: number[] = [];
     let last = await getMonthDashboardUseCase({ groupId, month: MONTH });
 

@@ -4,7 +4,6 @@ import cookieParser from 'cookie-parser';
 import { healthRouter } from './routes/health';
 import { authRouter } from './api/auth/auth.router';
 import { familyGroupRouter } from './api/family-group/family-group.router';
-import { expenseRouter } from './api/expense/expense.router';
 import { categoryRouter } from './api/category/category.router';
 import { budgetRouter } from './api/budget/budget.router';
 import { dashboardRouter } from './api/dashboard/dashboard.router';
@@ -26,7 +25,6 @@ export function createApp(): express.Application {
   app.use('/health', healthRouter);
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/groups', familyGroupRouter);
-  app.use('/api/v1/expenses', expenseRouter);
   app.use('/api/v1/categories', categoryRouter);
   app.use('/api/v1/budgets', budgetRouter);
   app.use('/api/v1/dashboard', dashboardRouter);

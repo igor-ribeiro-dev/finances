@@ -1,5 +1,5 @@
 import { prisma } from '../../infra/prisma';
-import { expenseRepository } from '../../domain/expense/expense.repository';
+import { billRepository } from '../../domain/bill/bill.repository';
 import { readMonthBudget } from '../budget/get-month-budget.use-case';
 import { buildMonthDashboard, type MonthDashboard } from './dashboard-aggregator';
 
@@ -20,11 +20,11 @@ export async function getMonthDashboardUseCase(
 
   const [monthBudget, spending] = await Promise.all([
     readMonthBudget(groupId, month),
-    expenseRepository.aggregateMonthSpending(groupId, month),
+    billRepository.aggregateMonthSpending(groupId, month),
   ]);
 
-  // Expense owners that are no longer group members (Clarification Q2) — their
-  // names survive on historical expenses (006 FR-018), fetched here by id.
+  // Bill payers that are no longer group members (Clarification Q2) — their
+  // names survive on historical PAID bills, fetched here by id.
   const activeIds = new Set(monthBudget.members.map((m) => m.memberId));
   const exMemberIds = spending.byMember
     .map((r) => r.ownerMemberId)

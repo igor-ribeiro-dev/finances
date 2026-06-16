@@ -2,7 +2,7 @@ import type { Category } from '@prisma/client';
 import { AppError, IdempotencyErrorCode } from '../../api/errors';
 import { prisma } from '../../infra/prisma';
 import { categoryRepository } from '../../domain/category/category.repository';
-import { idempotencyRepository } from '../../domain/expense/idempotency.repository';
+import { idempotencyRepository } from '../../domain/idempotency/idempotency.repository';
 import { assertParentIsRoot, duplicateNameError, isPrismaErrorCode } from './category-helpers';
 
 export interface CreateCategoryInput {

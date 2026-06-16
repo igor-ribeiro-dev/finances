@@ -1,14 +1,14 @@
 import request from 'supertest';
 import { createApp } from '../../../src/app';
 
-// T021 — US3 contract: category distribution (FR-009..FR-012, Clarification Q1).
+// T020 (US2) — category spending now sourced from PAID Bills, not Expenses.
 jest.mock('../../../src/infra/prisma', () => ({
   prisma: {
     session: { findUnique: jest.fn(), update: jest.fn() },
     user: { findUnique: jest.fn(), findMany: jest.fn() },
     category: { findMany: jest.fn() },
     budget: { findMany: jest.fn() },
-    expense: { groupBy: jest.fn() },
+    bill: { groupBy: jest.fn() },
   },
 }));
 
@@ -20,7 +20,7 @@ const session = prisma.session as unknown as { findUnique: jest.Mock; update: je
 const user = prisma.user as unknown as { findUnique: jest.Mock; findMany: jest.Mock };
 const category = prisma.category as unknown as { findMany: jest.Mock };
 const budget = prisma.budget as unknown as { findMany: jest.Mock };
-const expense = prisma.expense as unknown as { groupBy: jest.Mock };
+const bill = prisma.bill as unknown as { groupBy: jest.Mock };
 
 const GROUP = 'group-1';
 const ANA = 'user-ana';
@@ -45,9 +45,9 @@ function setupAuth(): void {
 }
 
 interface SpendRow {
-  ownerMemberId?: string;
+  paidByMemberId?: string;
   categoryId?: string | null;
-  _sum: { amountCents: number | null };
+  _sum: { actualAmountCents: number | null };
 }
 
 function setupReads(opts: {
@@ -58,8 +58,8 @@ function setupReads(opts: {
   budget.findMany.mockResolvedValue(opts.budgetRows ?? []);
   user.findMany.mockResolvedValue([{ id: ANA, name: 'Ana' }]);
   category.findMany.mockResolvedValue(CATEGORIES);
-  expense.groupBy.mockImplementation(({ by }: { by: string[] }) =>
-    Promise.resolve(by[0] === 'ownerMemberId' ? (opts.byMember ?? []) : (opts.byCategory ?? [])),
+  bill.groupBy.mockImplementation(({ by }: { by: string[] }) =>
+    Promise.resolve(by[0] === 'paidByMemberId' ? (opts.byMember ?? []) : (opts.byCategory ?? [])),
   );
 }
 
@@ -102,11 +102,11 @@ beforeEach(() => {
 describe('GET /api/v1/dashboard — categories (US3)', () => {
   it('aggregates sub-category spending into the root (umbrella rule, Q1)', async () => {
     setupReads({
-      byMember: [{ ownerMemberId: ANA, _sum: { amountCents: 200000 } }],
+      byMember: [{ paidByMemberId: ANA, _sum: { actualAmountCents: 200000 } }],
       byCategory: [
-        { categoryId: FOOD, _sum: { amountCents: 40000 } },
-        { categoryId: MARKET, _sum: { amountCents: 110000 } },
-        { categoryId: null, _sum: { amountCents: 50000 } },
+        { categoryId: FOOD, _sum: { actualAmountCents: 40000 } },
+        { categoryId: MARKET, _sum: { actualAmountCents: 110000 } },
+        { categoryId: null, _sum: { actualAmountCents: 50000 } },
       ],
     });
     const res = await authed('/api/v1/dashboard?month=2026-06');

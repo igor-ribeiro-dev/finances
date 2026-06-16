@@ -8,7 +8,7 @@ export interface FieldError {
 
 export interface CategoryBlockers {
   subCategoriesCount: number;
-  affectedExpensesCount: number;
+  affectedBillsCount: number;
 }
 
 /**
@@ -85,7 +85,7 @@ export function sendValidationError(res: Response, fieldErrors: FieldError[]): v
 export function sendCategoryBlockerError(res: Response, blockers: CategoryBlockers): void {
   res.status(409).json({
     code: CategoryErrorCode.hasDependencies,
-    message: `Esta categoria ainda possui ${blockers.subCategoriesCount} sub-categoria(s) e ${blockers.affectedExpensesCount} despesa(s) vinculada(s). Reorganize esses registros antes de excluí-la.`,
+    message: `Esta categoria ainda possui ${blockers.subCategoriesCount} sub-categoria(s) e ${blockers.affectedBillsCount} conta(s) vinculada(s). Reorganize esses registros antes de excluí-la.`,
     blockers,
   });
 }

@@ -34,6 +34,9 @@ export function mapBillToResponse(bill: BillWithRelations) {
             actualAmountCents: bill.actualAmountCents,
             paidByMemberId: bill.paidByMemberId,
             paymentMethod: bill.paymentMethod,
+            paidByMember: bill.paidByMember
+              ? { id: bill.paidByMember.id, name: bill.paidByMember.name }
+              : null,
           }
         : null,
     createdAt: bill.createdAt.toISOString(),

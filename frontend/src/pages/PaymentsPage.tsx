@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, ShoppingCart } from 'lucide-react';
 import { MonthSelector } from '../components/budget/MonthSelector';
 import { BillChecklist } from '../components/bills/BillChecklist';
 import { BillFormModal } from '../components/bills/BillFormModal';
 import { CopyPreviousMonthButton } from '../components/bills/CopyPreviousMonthButton';
 import { MonthBillsSummary } from '../components/bills/MonthBillsSummary';
+import { QuickLogModal } from '../components/bills/QuickLogModal';
 import { RecurringBillsSection } from '../components/bills/RecurringBillsSection';
 import { Toast, type ToastState } from '../components/Toast';
 import { useMonthBills } from '../hooks/useMonthBills';
@@ -13,6 +14,7 @@ import { currentMonth } from '../utils/month';
 export function PaymentsPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth());
   const [formOpen, setFormOpen] = useState(false);
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
 
   const { data, isLoading, error, reload } = useMonthBills(selectedMonth);
@@ -28,6 +30,12 @@ export function PaymentsPage() {
   function handleBillCreated() {
     setFormOpen(false);
     setToast({ kind: 'success', message: 'Conta registrada.' });
+    void reload();
+  }
+
+  function handleSpendingLogged() {
+    setQuickLogOpen(false);
+    setToast({ kind: 'success', message: 'Gasto registrado.' });
     void reload();
   }
 
@@ -84,6 +92,16 @@ export function PaymentsPage() {
           />
           <button
             type="button"
+            onClick={() => setQuickLogOpen(true)}
+            disabled={isLoading}
+            aria-label="Registrar gasto"
+            className="inline-flex items-center gap-2 rounded-lg border border-teal-600 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50"
+          >
+            <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+            Registrar gasto
+          </button>
+          <button
+            type="button"
             onClick={() => setFormOpen(true)}
             disabled={isLoading}
             className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50"
@@ -126,6 +144,12 @@ export function PaymentsPage() {
         selectedMonth={selectedMonth}
         onClose={() => setFormOpen(false)}
         onSuccess={handleBillCreated}
+      />
+
+      <QuickLogModal
+        open={quickLogOpen}
+        onClose={() => setQuickLogOpen(false)}
+        onSuccess={handleSpendingLogged}
       />
 
       <Toast value={toast} onDismiss={() => setToast(null)} />

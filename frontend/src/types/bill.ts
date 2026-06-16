@@ -18,6 +18,16 @@ export interface BillPayment {
   actualAmountCents: number;
   paidByMemberId: string;
   paymentMethod: PaymentMethod;
+  paidByMember: { id: string; name: string } | null;
+}
+
+export interface LogSpendingRequest {
+  description: string;
+  amountCents: number;
+  date: string; // YYYY-MM-DD — purchase date (not future)
+  paymentMethod: PaymentMethod;
+  paidByMemberId: string;
+  categoryId?: string | null;
 }
 
 export interface Bill {

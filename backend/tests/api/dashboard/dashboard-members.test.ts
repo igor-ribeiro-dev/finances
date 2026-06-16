@@ -1,14 +1,14 @@
 import request from 'supertest';
 import { createApp } from '../../../src/app';
 
-// T016 — US2 contract: per-member spending vs resolved budgets (FR-006..FR-008, FR-017).
+// T020 (US2) — member spending now sourced from PAID Bills (paidByMemberId), not Expenses.
 jest.mock('../../../src/infra/prisma', () => ({
   prisma: {
     session: { findUnique: jest.fn(), update: jest.fn() },
     user: { findUnique: jest.fn(), findMany: jest.fn() },
     category: { findMany: jest.fn() },
     budget: { findMany: jest.fn() },
-    expense: { groupBy: jest.fn() },
+    bill: { groupBy: jest.fn() },
   },
 }));
 
@@ -20,12 +20,12 @@ const session = prisma.session as unknown as { findUnique: jest.Mock; update: je
 const user = prisma.user as unknown as { findUnique: jest.Mock; findMany: jest.Mock };
 const category = prisma.category as unknown as { findMany: jest.Mock };
 const budget = prisma.budget as unknown as { findMany: jest.Mock };
-const expense = prisma.expense as unknown as { groupBy: jest.Mock };
+const bill = prisma.bill as unknown as { groupBy: jest.Mock };
 
 const GROUP = 'group-1';
 const ANA = 'user-ana';
 const BIA = 'user-bia';
-const CARLOS = 'user-carlos'; // left the group; still owns expenses this month
+const CARLOS = 'user-carlos'; // left the group; still has PAID bills this month
 
 const ACTIVE = [
   { id: ANA, name: 'Ana' },
@@ -44,15 +44,13 @@ function setupAuth(userId: string = ANA): void {
 }
 
 interface SpendRow {
-  ownerMemberId?: string;
+  paidByMemberId?: string;
   categoryId?: string | null;
-  _sum: { amountCents: number | null };
+  _sum: { actualAmountCents: number | null };
 }
 
 function setupReads(opts: { budgetRows?: object[]; byMember?: SpendRow[] }): void {
   budget.findMany.mockResolvedValue(opts.budgetRows ?? []);
-  // Dual-purpose user.findMany: active-members fetch (familyGroupId filter) vs
-  // ex-member name lookup (id.in filter) — mirrors the real call shapes.
   user.findMany.mockImplementation(
     ({ where }: { where: { id?: { in: string[] }; familyGroupId?: string } }) => {
       if (where.id?.in) {
@@ -62,8 +60,8 @@ function setupReads(opts: { budgetRows?: object[]; byMember?: SpendRow[] }): voi
     },
   );
   category.findMany.mockResolvedValue([]);
-  expense.groupBy.mockImplementation(({ by }: { by: string[] }) =>
-    Promise.resolve(by[0] === 'ownerMemberId' ? (opts.byMember ?? []) : []),
+  bill.groupBy.mockImplementation(({ by }: { by: string[] }) =>
+    Promise.resolve(by[0] === 'paidByMemberId' ? (opts.byMember ?? []) : []),
   );
 }
 
@@ -110,7 +108,7 @@ describe('GET /api/v1/dashboard — members (US2)', () => {
   it('lists every active member, zero-spend included, with resolved budgets', async () => {
     setupReads({
       budgetRows: [familyRow(500000), memberRow(ANA, { percent: 30 })],
-      byMember: [{ ownerMemberId: ANA, _sum: { amountCents: 120000 } }],
+      byMember: [{ paidByMemberId: ANA, _sum: { actualAmountCents: 120000 } }],
     });
     const res = await authed('/api/v1/dashboard?month=2026-06');
     expect(res.status).toBe(200);
@@ -127,20 +125,19 @@ describe('GET /api/v1/dashboard — members (US2)', () => {
   });
 
   it('marks an unresolvable percent limit with resolvedCents null (FR-007)', async () => {
-    // No family budget → Ana's 30% has no base.
     setupReads({
       budgetRows: [memberRow(ANA, { percent: 30 })],
-      byMember: [{ ownerMemberId: ANA, _sum: { amountCents: 5000 } }],
+      byMember: [{ paidByMemberId: ANA, _sum: { actualAmountCents: 5000 } }],
     });
     const res = await authed('/api/v1/dashboard?month=2026-06');
     expect(res.body.members[0].budget.resolvedCents).toBeNull();
   });
 
-  it('includes ex-members with expenses as inactive rows; sum matches family (Q2)', async () => {
+  it('includes ex-members with PAID bills as inactive rows; sum matches family (Q2)', async () => {
     setupReads({
       byMember: [
-        { ownerMemberId: ANA, _sum: { amountCents: 120000 } },
-        { ownerMemberId: CARLOS, _sum: { amountCents: 25000 } },
+        { paidByMemberId: ANA, _sum: { actualAmountCents: 120000 } },
+        { paidByMemberId: CARLOS, _sum: { actualAmountCents: 25000 } },
       ],
     });
     const res = await authed('/api/v1/dashboard?month=2026-06');
@@ -160,8 +157,8 @@ describe('GET /api/v1/dashboard — members (US2)', () => {
     expect(res.body.family.spentCents).toBe(145000);
   });
 
-  it('omits ex-members without expenses in the month', async () => {
-    setupReads({ byMember: [{ ownerMemberId: ANA, _sum: { amountCents: 100 } }] });
+  it('omits ex-members without PAID bills in the month', async () => {
+    setupReads({ byMember: [{ paidByMemberId: ANA, _sum: { actualAmountCents: 100 } }] });
     const res = await authed('/api/v1/dashboard?month=2026-06');
     const ids = res.body.members.map((m: { memberId: string }) => m.memberId);
     expect(ids).toEqual([ANA, BIA]);
@@ -171,8 +168,8 @@ describe('GET /api/v1/dashboard — members (US2)', () => {
     setupReads({
       budgetRows: [familyRow(500000), memberRow(ANA, { percent: 30 })],
       byMember: [
-        { ownerMemberId: ANA, _sum: { amountCents: 120000 } },
-        { ownerMemberId: BIA, _sum: { amountCents: 80000 } },
+        { paidByMemberId: ANA, _sum: { actualAmountCents: 120000 } },
+        { paidByMemberId: BIA, _sum: { actualAmountCents: 80000 } },
       ],
     });
     const asAna = await authed('/api/v1/dashboard?month=2026-06');
@@ -182,8 +179,8 @@ describe('GET /api/v1/dashboard — members (US2)', () => {
     setupReads({
       budgetRows: [familyRow(500000), memberRow(ANA, { percent: 30 })],
       byMember: [
-        { ownerMemberId: ANA, _sum: { amountCents: 120000 } },
-        { ownerMemberId: BIA, _sum: { amountCents: 80000 } },
+        { paidByMemberId: ANA, _sum: { actualAmountCents: 120000 } },
+        { paidByMemberId: BIA, _sum: { actualAmountCents: 80000 } },
       ],
     });
     const asBia = await authed('/api/v1/dashboard?month=2026-06');

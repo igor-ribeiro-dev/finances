@@ -1,4 +1,4 @@
-import { MoneyInput } from '../expense/MoneyInput';
+import { MoneyInput } from '../shared/MoneyInput';
 import { formatCents } from '../../utils/money';
 import type { EditableLimit } from './limit-draft';
 

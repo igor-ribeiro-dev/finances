@@ -1,4 +1,4 @@
-import { MoneyInput } from '../expense/MoneyInput';
+import { MoneyInput } from '../shared/MoneyInput';
 
 interface FamilyBudgetSectionProps {
   cents: number;

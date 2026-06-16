@@ -27,16 +27,17 @@ export type BillWithRelations = {
   paidDate: Date | null;
   actualAmountCents: number | null;
   paidByMemberId: string | null;
-  paidByMember: { id: string; name: string; familyGroupId: string } | null;
+  paidByMember: { id: string; name: string } | null;
   paymentMethod: PaymentMethod | null;
-  expenseId: string | null;
+  createdById: string | null;
+  updatedById: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
 
 const billInclude = {
   ownerMember: { select: { id: true, name: true, familyGroupId: true } },
-  paidByMember: { select: { id: true, name: true, familyGroupId: true } },
+  paidByMember: { select: { id: true, name: true } },
   category: {
     select: {
       id: true,
@@ -56,6 +57,14 @@ export interface CreateBillData {
   categoryId?: string | null;
   ownerMemberId?: string | null;
   recurringBillId?: string | null;
+  createdById?: string | null;
+  updatedById?: string | null;
+  /** When set, creates the bill directly as PAID (used by log-spending). */
+  status?: BillStatus;
+  paidDate?: Date | null;
+  actualAmountCents?: number | null;
+  paidByMemberId?: string | null;
+  paymentMethod?: PaymentMethod | null;
 }
 
 export interface UpdateBillData {
@@ -70,7 +79,7 @@ export interface UpdateBillData {
   actualAmountCents?: number | null;
   paidByMemberId?: string | null;
   paymentMethod?: PaymentMethod | null;
-  expenseId?: string | null;
+  updatedById?: string | null;
 }
 
 export interface CreateManyBillRow {
@@ -85,6 +94,21 @@ export interface CreateManyBillRow {
   recurringBillId: string | null;
 }
 
+/** Month spending sums in integer cents for the dashboard (feature 009/011). */
+export interface MonthSpendingAggregate {
+  byMember: { ownerMemberId: string; spentCents: number }[];
+  byCategory: { categoryId: string | null; spentCents: number }[];
+}
+
+/** `YYYY-MM` → civil-date range `[month-01, next-month-01)` (UTC, no tz math). */
+export function monthDateRange(month: string): { gte: Date; lt: Date } {
+  const [y, m] = month.split('-').map(Number);
+  return {
+    gte: new Date(Date.UTC(y as number, (m as number) - 1, 1)),
+    lt: new Date(Date.UTC(y as number, m as number, 1)),
+  };
+}
+
 export const billRepository = {
   async create(data: CreateBillData, tx?: Prisma.TransactionClient): Promise<BillWithRelations> {
     const client = tx ?? prisma;
@@ -95,10 +119,16 @@ export const billRepository = {
         expectedAmountCents: data.expectedAmountCents,
         dueDate: data.dueDate,
         month: data.month,
-        status: 'PENDING',
+        status: data.status ?? 'PENDING',
         categoryId: data.categoryId ?? null,
         ownerMemberId: data.ownerMemberId ?? null,
         recurringBillId: data.recurringBillId ?? null,
+        createdById: data.createdById ?? null,
+        updatedById: data.updatedById ?? null,
+        paidDate: data.paidDate ?? null,
+        actualAmountCents: data.actualAmountCents ?? null,
+        paidByMemberId: data.paidByMemberId ?? null,
+        paymentMethod: data.paymentMethod ?? null,
       },
       include: billInclude,
     }) as Promise<BillWithRelations>;
@@ -149,14 +179,42 @@ export const billRepository = {
     await prisma.bill.delete({ where: { id } });
   },
 
-  async findByExpenseId(expenseId: string): Promise<{ id: string } | null> {
-    return prisma.bill.findFirst({
-      where: { expenseId },
-      select: { id: true },
-    });
-  },
-
   async createMany(rows: CreateManyBillRow[], skipDuplicates: boolean): Promise<{ count: number }> {
     return prisma.bill.createMany({ data: rows, skipDuplicates });
+  },
+
+  /**
+   * Month spending sums by payer member and by category (feature 011, dashboard).
+   * Two groupBy queries over PAID bills filtered by paidDate in the month.
+   * Uses the new (groupId, paidDate) index for performance parity with the old
+   * expense_group_date_id_idx.
+   */
+  async aggregateMonthSpending(groupId: string, month: string): Promise<MonthSpendingAggregate> {
+    const range = monthDateRange(month);
+    const where = { groupId, status: 'PAID' as const, paidDate: range };
+    const [byMember, byCategory] = await Promise.all([
+      prisma.bill.groupBy({
+        by: ['paidByMemberId'],
+        where,
+        _sum: { actualAmountCents: true },
+      }),
+      prisma.bill.groupBy({
+        by: ['categoryId'],
+        where,
+        _sum: { actualAmountCents: true },
+      }),
+    ]);
+    return {
+      byMember: byMember
+        .filter((r) => r.paidByMemberId !== null)
+        .map((r) => ({
+          ownerMemberId: r.paidByMemberId as string,
+          spentCents: r._sum.actualAmountCents ?? 0,
+        })),
+      byCategory: byCategory.map((r) => ({
+        categoryId: r.categoryId,
+        spentCents: r._sum.actualAmountCents ?? 0,
+      })),
+    };
   },
 };

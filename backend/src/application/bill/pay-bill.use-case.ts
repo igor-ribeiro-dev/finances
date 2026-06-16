@@ -1,5 +1,4 @@
 import { AppError } from '../../api/errors';
-import { prisma } from '../../infra/prisma';
 import { billRepository } from '../../domain/bill/bill.repository';
 
 export interface PayBillInput {
@@ -23,32 +22,12 @@ export async function payBillUseCase(input: PayBillInput) {
     throw new AppError('bill.invalid_transition', 'Apenas contas Pendentes podem ser pagas.', 409);
   }
 
-  return prisma.$transaction(async (tx) => {
-    const expense = await tx.expense.create({
-      data: {
-        groupId,
-        amountCents: body.actualAmountCents,
-        date: new Date(`${body.paidDate}T00:00:00Z`),
-        description: existing.description,
-        paymentMethod: body.paymentMethod,
-        ownerMemberId: body.paidByMemberId,
-        categoryId: existing.categoryId ?? null,
-        createdById: userId,
-        updatedById: userId,
-      },
-    });
-
-    return billRepository.update(
-      id,
-      {
-        status: 'PAID',
-        paidDate: new Date(`${body.paidDate}T00:00:00Z`),
-        actualAmountCents: body.actualAmountCents,
-        paidByMemberId: body.paidByMemberId,
-        paymentMethod: body.paymentMethod,
-        expenseId: expense.id,
-      },
-      tx,
-    );
+  return billRepository.update(id, {
+    status: 'PAID',
+    paidDate: new Date(`${body.paidDate}T00:00:00Z`),
+    actualAmountCents: body.actualAmountCents,
+    paidByMemberId: body.paidByMemberId,
+    paymentMethod: body.paymentMethod,
+    updatedById: userId,
   });
 }

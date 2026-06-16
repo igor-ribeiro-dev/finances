@@ -1,14 +1,14 @@
 import request from 'supertest';
 import { createApp } from '../../../src/app';
 
-// T007 — US1 contract: family.spentCents vs family budget (FR-002..FR-005, FR-016, FR-019).
+// T020 (US2) — family spending now sourced from PAID Bills, not Expenses.
 jest.mock('../../../src/infra/prisma', () => ({
   prisma: {
     session: { findUnique: jest.fn(), update: jest.fn() },
     user: { findUnique: jest.fn(), findMany: jest.fn() },
     category: { findMany: jest.fn() },
     budget: { findMany: jest.fn() },
-    expense: { groupBy: jest.fn() },
+    bill: { groupBy: jest.fn() },
   },
 }));
 
@@ -20,7 +20,7 @@ const session = prisma.session as unknown as { findUnique: jest.Mock; update: je
 const user = prisma.user as unknown as { findUnique: jest.Mock; findMany: jest.Mock };
 const category = prisma.category as unknown as { findMany: jest.Mock };
 const budget = prisma.budget as unknown as { findMany: jest.Mock };
-const expense = prisma.expense as unknown as { groupBy: jest.Mock };
+const bill = prisma.bill as unknown as { groupBy: jest.Mock };
 
 const GROUP = 'group-1';
 const ANA = 'user-ana';
@@ -32,9 +32,9 @@ const MEMBERS = [
 ];
 
 interface SpendRow {
-  ownerMemberId?: string;
+  paidByMemberId?: string;
   categoryId?: string | null;
-  _sum: { amountCents: number | null };
+  _sum: { actualAmountCents: number | null };
 }
 
 function setupAuth(): void {
@@ -57,8 +57,8 @@ function setupReads(opts: {
     Promise.resolve(where.id?.in ? MEMBERS.filter((m) => where.id!.in.includes(m.id)) : MEMBERS),
   );
   category.findMany.mockResolvedValue([]);
-  expense.groupBy.mockImplementation(({ by }: { by: string[] }) =>
-    Promise.resolve(by[0] === 'ownerMemberId' ? (opts.byMember ?? []) : (opts.byCategory ?? [])),
+  bill.groupBy.mockImplementation(({ by }: { by: string[] }) =>
+    Promise.resolve(by[0] === 'paidByMemberId' ? (opts.byMember ?? []) : (opts.byCategory ?? [])),
   );
 }
 
@@ -88,13 +88,11 @@ beforeEach(() => {
 });
 
 describe('GET /api/v1/dashboard — family summary (US1)', () => {
-  it('sums all expenses of the month (both payment methods) into family.spentCents', async () => {
-    // groupBy already aggregates regardless of paymentMethod — assert the sum
-    // and that the query is bucketed by civil date range (FR-002/FR-003).
+  it('sums all PAID bills of the month into family.spentCents', async () => {
     setupReads({
       byMember: [
-        { ownerMemberId: ANA, _sum: { amountCents: 120000 } },
-        { ownerMemberId: BIA, _sum: { amountCents: 205000 } },
+        { paidByMemberId: ANA, _sum: { actualAmountCents: 120000 } },
+        { paidByMemberId: BIA, _sum: { actualAmountCents: 205000 } },
       ],
       budgetRows: [familyRow(500000)],
     });
@@ -110,22 +108,23 @@ describe('GET /api/v1/dashboard — family summary (US1)', () => {
       resolvedCents: 500000,
     });
 
-    // Civil-date month bucketing on the session's group (FR-002, FR-019).
-    const groupByArgs = expense.groupBy.mock.calls[0][0];
+    // Civil-date paidDate month bucketing on the session's group.
+    const groupByArgs = bill.groupBy.mock.calls[0][0];
     expect(groupByArgs.where.groupId).toBe(GROUP);
-    expect(groupByArgs.where.date.gte).toEqual(new Date(Date.UTC(2026, 5, 1)));
-    expect(groupByArgs.where.date.lt).toEqual(new Date(Date.UTC(2026, 6, 1)));
+    expect(groupByArgs.where.status).toBe('PAID');
+    expect(groupByArgs.where.paidDate.gte).toEqual(new Date(Date.UTC(2026, 5, 1)));
+    expect(groupByArgs.where.paidDate.lt).toEqual(new Date(Date.UTC(2026, 6, 1)));
   });
 
   it('returns budget null when the month has no family budget (FR-005)', async () => {
-    setupReads({ byMember: [{ ownerMemberId: ANA, _sum: { amountCents: 9900 } }] });
+    setupReads({ byMember: [{ paidByMemberId: ANA, _sum: { actualAmountCents: 9900 } }] });
     const res = await authed('/api/v1/dashboard?month=2026-06');
     expect(res.status).toBe(200);
     expect(res.body.family.spentCents).toBe(9900);
     expect(res.body.family.budget).toBeNull();
   });
 
-  it('returns zeroed totals for a month without expenses (FR-016)', async () => {
+  it('returns zeroed totals for a month without PAID bills (FR-016)', async () => {
     setupReads({ budgetRows: [familyRow(500000)] });
     const res = await authed('/api/v1/dashboard?month=2026-06');
     expect(res.status).toBe(200);
@@ -146,7 +145,7 @@ describe('GET /api/v1/dashboard — family summary (US1)', () => {
     const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     try {
       setupReads({
-        byMember: [{ ownerMemberId: ANA, _sum: { amountCents: 325000 } }],
+        byMember: [{ paidByMemberId: ANA, _sum: { actualAmountCents: 325000 } }],
         budgetRows: [familyRow(500000)],
       });
       await authed('/api/v1/dashboard?month=2026-06');
@@ -168,7 +167,6 @@ describe('GET /api/v1/dashboard — family summary (US1)', () => {
         groupId: GROUP,
         month: '2026-06',
       });
-      // No clear-text monetary values in the log line.
       const raw = JSON.stringify(entry);
       expect(raw).not.toContain('325000');
       expect(raw).not.toContain('500000');

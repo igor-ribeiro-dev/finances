@@ -8,6 +8,7 @@ import type {
   CopyBillsResponse,
   PayBillBody,
   UpdatePaymentBody,
+  LogSpendingRequest,
   ServiceError,
 } from '../types/bill';
 
@@ -142,5 +143,13 @@ export const billService = {
   /** POST /api/v1/bills/:id/reactivate */
   async reactivate(id: string): Promise<{ bill: Bill }> {
     return request<{ bill: Bill }>(`/${id}/reactivate`, { method: 'POST' });
+  },
+
+  /** POST /api/v1/bills/log — cria uma conta já Paga em um passo (FR-001) */
+  async logSpending(body: LogSpendingRequest): Promise<{ bill: Bill }> {
+    return request<{ bill: Bill }>('/log', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
   },
 };

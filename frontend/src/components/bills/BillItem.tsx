@@ -54,7 +54,7 @@ export function BillItem({
   }
 
   async function handleRevertPayment() {
-    if (!window.confirm('Reverter pagamento? A despesa vinculada será excluída.')) return;
+    if (!window.confirm('Reverter pagamento? O status voltará para Pendente.')) return;
     setIsActing(true);
     try {
       await billService.revertPayment(bill.id);
@@ -155,7 +155,12 @@ export function BillItem({
               </>
             )}
             {bill.category && <span className="text-gray-400">{bill.category.name}</span>}
-            {bill.ownerMember && <span className="text-gray-400">{bill.ownerMember.name}</span>}
+            {isPaid && bill.payment?.paidByMember && (
+              <span className="text-gray-400">{bill.payment.paidByMember.name}</span>
+            )}
+            {!isPaid && bill.ownerMember && (
+              <span className="text-gray-400">{bill.ownerMember.name}</span>
+            )}
           </div>
         </div>
 
