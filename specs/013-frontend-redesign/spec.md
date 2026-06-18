@@ -26,7 +26,7 @@
 
 ### User Story 1 - Navegação com Visual Moderno (Priority: P1)
 
-O usuário acessa qualquer tela do app e percebe imediatamente a nova identidade visual: fundo escuro ou neutro profundo, elementos com efeito de vidro translúcido (liquid glass), e pills/chips para tags, categorias e filtros. A paleta usa tons de roxo e violeta como cor primária.
+O usuário acessa qualquer tela do app e percebe imediatamente a nova identidade visual: fundo com profundidade (escuro no tema dark, claro no tema light — ambos com os mesmos tokens), elementos com efeito de vidro translúcido (liquid glass), e pills/chips para tags e filtros. A paleta usa tons de roxo e violeta como cor primária.
 
 **Why this priority**: A aparência geral é o núcleo do redesign — sem ela, as demais histórias não fazem sentido. Define o "tom" de toda a experiência.
 
@@ -34,19 +34,19 @@ O usuário acessa qualquer tela do app e percebe imediatamente a nova identidade
 
 **Acceptance Scenarios**:
 
-1. **Given** o usuário abre o app, **When** a tela inicial carrega, **Then** ele vê fundo com profundidade visual (escuro/neutro), elementos com aparência translúcida/vidro e a cor primária em roxo/violeta
+1. **Given** o usuário abre o app, **When** a tela inicial carrega, **Then** ele vê fundo com profundidade visual (escuro ou claro conforme o tema), elementos com aparência translúcida/vidro e a cor primária em roxo/violeta
 2. **Given** o usuário navega entre seções, **When** transita de uma tela para outra, **Then** o sistema de design é consistente: mesmas cores, bordas, sombras e tipografia em todas as páginas
-3. **Given** o usuário está em qualquer tela com lista de itens, **When** observa tags e categorias, **Then** eles aparecem como pills arredondados com a paleta roxa/violeta
+3. **Given** o usuário está em qualquer tela com lista de itens, **When** observa tags e filtros, **Then** eles aparecem como pills arredondados com a paleta roxa/violeta (seletores de categoria e cartão permanecem como dropdown)
 
 ---
 
-### User Story 2 - Pills e Chips para Filtros e Categorias (Priority: P2)
+### User Story 2 - Pills e Chips para Filtros e Seletores de Baixa Cardinalidade (Priority: P2)
 
-O usuário usa filtros de data, categorias de despesa ou status de cartão de crédito. Todos esses controles aparecem como pills clicáveis/selecionáveis, com estado ativo visualmente destacado na paleta roxa.
+O usuário usa filtros de data, **método de pagamento**, **status** e **seletor de mês**. Esses controles de baixa cardinalidade aparecem como pills clicáveis/selecionáveis, com estado ativo visualmente destacado na paleta roxa. Seletores de listas longas/variáveis (categoria, cartão) permanecem como dropdown.
 
-**Why this priority**: Pills são o componente UI central do redesign — substituem dropdowns e checkboxes comuns por um padrão mais moderno e tátil.
+**Why this priority**: Pills são o componente UI central do redesign — substituem dropdowns e checkboxes comuns por um padrão mais moderno e tátil onde a cardinalidade é baixa.
 
-**Independent Test**: Pode ser testado na tela de listagem de despesas usando apenas filtros de categoria, sem precisar de outras telas.
+**Independent Test**: Pode ser testado na tela de listagem de despesas usando apenas os filtros de status/método, sem precisar de outras telas.
 
 **Acceptance Scenarios**:
 
