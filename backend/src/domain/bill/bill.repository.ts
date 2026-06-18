@@ -106,6 +106,9 @@ export interface CreateManyBillRow {
   categoryId: string | null;
   ownerMemberId: string | null;
   recurringBillId: string | null;
+  // Feature 012: a recurring subscription on a card seeds its instances with the
+  // card (PENDING), so paying is one click. Omitted by copy-previous-month.
+  creditCardId?: string | null;
 }
 
 /** Month spending sums in integer cents for the dashboard (feature 009/011). */
@@ -159,8 +162,9 @@ export const billRepository = {
   },
 
   async listByMonth(groupId: string, month: Date): Promise<BillWithRelations[]> {
+    const lt = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 1));
     return prisma.bill.findMany({
-      where: { groupId, month },
+      where: { groupId, month: { gte: month, lt } },
       orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
       include: billInclude,
     }) as Promise<BillWithRelations[]>;

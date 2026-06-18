@@ -184,6 +184,13 @@ model RecurringBill {
   category             Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   ownerMemberId        String?
   ownerMember          User?               @relation("RecurringBillOwner", fields: [ownerMemberId], references: [id], onDelete: SetNull)
+  // Feature 012: learned payment profile (subscription). When an instance is
+  // paid, the template inherits the method + card so future instances are
+  // materialized PENDING already pre-filled (paymentMethod stays off the PENDING
+  // instance per the bill invariant; only creditCardId is copied as a default).
+  paymentMethod        PaymentMethod?
+  creditCardId         String?
+  creditCard           CreditCard?         @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
   deletedAt            DateTime?
   bills                Bill[]
   createdAt            DateTime            @default(now())
@@ -204,6 +211,7 @@ model CreditCard {
   closingDay Int
   status    CreditCardStatus @default(ACTIVE)
   bills     Bill[]
+  recurringBills RecurringBill[]
   // normalizedName is a Postgres GENERATED ALWAYS column (raw SQL, collated
   // pt_BR_ci_as) backing the partial unique index on active cards. @ignore so
   // the Prisma client never reads/writes it.

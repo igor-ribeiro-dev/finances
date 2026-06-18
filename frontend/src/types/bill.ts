@@ -95,6 +95,7 @@ export interface CreateBillBody {
   dueDate: string; // YYYY-MM-DD
   categoryId?: string | null;
   ownerMemberId?: string | null;
+  recurringBillId?: string | null;
 }
 
 export type UpdateBillBody = Partial<CreateBillBody>;

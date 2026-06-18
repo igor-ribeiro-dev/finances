@@ -3,20 +3,24 @@ import { Plus, ShoppingCart } from 'lucide-react';
 import { MonthSelector } from '../components/budget/MonthSelector';
 import { BillChecklist } from '../components/bills/BillChecklist';
 import { BillFormModal } from '../components/bills/BillFormModal';
+import { PayBillModal } from '../components/bills/PayBillModal';
 import { CopyPreviousMonthButton } from '../components/bills/CopyPreviousMonthButton';
 import { MonthBillsSummary } from '../components/bills/MonthBillsSummary';
 import { QuickLogModal } from '../components/bills/QuickLogModal';
-import { RecurringBillsSection } from '../components/bills/RecurringBillsSection';
 import { CreditCardSummarySection } from '../components/credit-cards/CreditCardSummarySection';
 import { Toast, type ToastState } from '../components/Toast';
 import { useMonthBills } from '../hooks/useMonthBills';
+import { billService } from '../services/bill.service';
 import { currentMonth } from '../utils/month';
+import type { Bill, ProjectedBill } from '../types/bill';
 
 export function PaymentsPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth());
   const [formOpen, setFormOpen] = useState(false);
   const [quickLogOpen, setQuickLogOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [payingProjectedId, setPayingProjectedId] = useState<string | null>(null);
+  const [payBillTarget, setPayBillTarget] = useState<Bill | null>(null);
 
   const { data, isLoading, error, reload } = useMonthBills(selectedMonth);
 
@@ -59,6 +63,28 @@ export function PaymentsPage() {
           : 'Nenhuma conta para copiar do mês anterior.',
     });
     void reload();
+  }
+
+  async function handlePayProjected(projected: ProjectedBill) {
+    setPayingProjectedId(projected.recurringBillId);
+    try {
+      const { bill } = await billService.create({
+        description: projected.description,
+        expectedAmountCents: projected.expectedAmountCents,
+        dueDate: projected.dueDate,
+        categoryId: projected.categoryId,
+        ownerMemberId: projected.ownerMemberId,
+        recurringBillId: projected.recurringBillId,
+      });
+      // Reload immediately so the projected bill disappears from the list
+      // (the persisted instance now exists) before the payment modal opens.
+      await reload();
+      setPayBillTarget(bill);
+    } catch {
+      setToast({ kind: 'error', message: 'Erro ao criar a conta. Tente novamente.' });
+    } finally {
+      setPayingProjectedId(null);
+    }
   }
 
   function handleConcurrentError() {
@@ -137,9 +163,9 @@ export function PaymentsPage() {
         onBillDeleted={handleBillDeleted}
         onConcurrentError={handleConcurrentError}
         onReload={reload}
+        onPayProjected={handlePayProjected}
+        payingProjectedId={payingProjectedId}
       />
-
-      <RecurringBillsSection onReload={reload} />
 
       <BillFormModal
         open={formOpen}
@@ -154,6 +180,20 @@ export function PaymentsPage() {
         onClose={() => setQuickLogOpen(false)}
         onSuccess={handleSpendingLogged}
       />
+
+      {payBillTarget && (
+        <PayBillModal
+          open={true}
+          bill={payBillTarget}
+          mode="pay"
+          onClose={() => setPayBillTarget(null)}
+          onSuccess={() => {
+            setPayBillTarget(null);
+            setToast({ kind: 'success', message: 'Conta paga.' });
+            void reload();
+          }}
+        />
+      )}
 
       <Toast value={toast} onDismiss={() => setToast(null)} />
     </div>

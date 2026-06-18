@@ -1,6 +1,7 @@
 import { AppError } from '../../api/errors';
 import { billRepository } from '../../domain/bill/bill.repository';
 import { resolveCreditCardForSpending } from './credit-card-link';
+import { learnRecurringPaymentProfile } from './learn-recurring-payment';
 
 export interface UpdatePaymentInput {
   userId: string;
@@ -34,7 +35,7 @@ export async function updatePaymentUseCase(input: UpdatePaymentInput) {
     ? existing.creditCardId
     : await resolveCreditCardForSpending(groupId, body.paymentMethod, body.creditCardId);
 
-  return billRepository.update(id, {
+  const bill = await billRepository.update(id, {
     paidDate: new Date(`${body.paidDate}T00:00:00Z`),
     actualAmountCents: body.actualAmountCents,
     paidByMemberId: body.paidByMemberId,
@@ -42,4 +43,13 @@ export async function updatePaymentUseCase(input: UpdatePaymentInput) {
     creditCardId,
     updatedById: userId,
   });
+  // Correcting the payment updates what the parent conta fixa learned.
+  await learnRecurringPaymentProfile(
+    existing.recurringBillId,
+    existing.isFatura,
+    body.paymentMethod,
+    creditCardId,
+    body.actualAmountCents,
+  );
+  return bill;
 }

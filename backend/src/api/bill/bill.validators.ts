@@ -54,6 +54,7 @@ export const createBillBody = z.object({
   dueDate: dueDateField,
   categoryId: uuid.nullable().optional(),
   ownerMemberId: uuid.nullable().optional(),
+  recurringBillId: uuid.nullable().optional(),
 });
 
 export const updateBillBody = z.object({

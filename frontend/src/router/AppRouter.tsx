@@ -13,6 +13,7 @@ import { CategoriesPage } from '../pages/CategoriesPage';
 import { BudgetsPage } from '../pages/BudgetsPage';
 import { PaymentsPage } from '../pages/PaymentsPage';
 import { CreditCardsPage } from '../pages/CreditCardsPage';
+import { RecurringBillsPage } from '../pages/RecurringBillsPage';
 
 function SessionExpiredHandler() {
   const navigate = useNavigate();
@@ -80,6 +81,16 @@ export function AppRouter() {
               <ProtectedRoute>
                 <AppLayout>
                   <PaymentsPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contas-fixas"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <RecurringBillsPage />
                 </AppLayout>
               </ProtectedRoute>
             }

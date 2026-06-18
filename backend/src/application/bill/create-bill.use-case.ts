@@ -11,6 +11,7 @@ export interface CreateBillInput {
     dueDate: string;
     categoryId?: string | null;
     ownerMemberId?: string | null;
+    recurringBillId?: string | null;
   };
 }
 
@@ -38,5 +39,6 @@ export async function createBillUseCase(input: CreateBillInput) {
     month,
     categoryId: body.categoryId ?? null,
     ownerMemberId: body.ownerMemberId ?? null,
+    recurringBillId: body.recurringBillId ?? null,
   });
 }

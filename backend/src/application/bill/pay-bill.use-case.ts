@@ -2,6 +2,7 @@ import { AppError } from '../../api/errors';
 import { prisma } from '../../infra/prisma';
 import { billRepository } from '../../domain/bill/bill.repository';
 import { resolveCreditCardForSpending } from './credit-card-link';
+import { learnRecurringPaymentProfile } from './learn-recurring-payment';
 
 export interface PayBillInput {
   userId: string;
@@ -52,5 +53,14 @@ export async function payBillUseCase(input: PayBillInput) {
     });
   }
 
-  return billRepository.update(id, payData);
+  const bill = await billRepository.update(id, payData);
+  // The parent conta fixa (if any) learns this method, card, and amount for next month.
+  await learnRecurringPaymentProfile(
+    existing.recurringBillId,
+    existing.isFatura,
+    body.paymentMethod,
+    creditCardId,
+    body.actualAmountCents,
+  );
+  return bill;
 }

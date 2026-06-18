@@ -34,11 +34,16 @@ export function PayBillModal({ open, bill, mode, onClose, onSuccess }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    // Reset to payment defaults on open
-    setPaidDate(bill.payment?.paidDate ?? todayIso());
+    // Reset to payment defaults on open. Pay mode always starts with today;
+    // edit mode keeps the existing payment date.
+    setPaidDate(mode === 'pay' ? todayIso() : (bill.payment?.paidDate ?? todayIso()));
     setAmountCents(bill.payment?.actualAmountCents ?? bill.expectedAmountCents);
     setPaidByMemberId(bill.payment?.paidByMemberId ?? bill.ownerMemberId ?? '');
-    setPaymentMethod(bill.payment?.paymentMethod ?? 'CASH_OR_DEBIT');
+    // For a PENDING instance that inherited a card from its conta fixa
+    // (subscription), default the method to credit card so paying is one click.
+    setPaymentMethod(
+      bill.payment?.paymentMethod ?? (bill.creditCardId ? 'CREDIT_CARD' : 'CASH_OR_DEBIT'),
+    );
     setCreditCardId(bill.creditCardId ?? '');
     setError(null);
     // Fetch members
@@ -54,7 +59,7 @@ export function PayBillModal({ open, bill, mode, onClose, onSuccess }: Props) {
       .listCards()
       .then((list) => setCards(list.filter((c) => c.status === 'ACTIVE')))
       .catch(() => {});
-  }, [open]);
+  }, [open, mode]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
