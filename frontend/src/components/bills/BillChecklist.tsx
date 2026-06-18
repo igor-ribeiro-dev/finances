@@ -11,6 +11,8 @@ interface BillChecklistProps {
   onBillDeleted: () => void;
   onConcurrentError: () => void;
   onReload: () => Promise<void>;
+  onPayProjected?: (projected: ProjectedBill) => void;
+  payingProjectedId?: string | null;
 }
 
 function formatDate(iso: string): string {
@@ -27,6 +29,8 @@ export function BillChecklist({
   onBillUpdated,
   onBillDeleted,
   onConcurrentError,
+  onPayProjected,
+  payingProjectedId,
 }: BillChecklistProps) {
   if (isLoading) {
     return (
@@ -70,7 +74,7 @@ export function BillChecklist({
         {projectedBills.map((projected) => (
           <li
             key={projected.recurringBillId}
-            className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-dashed border-blue-200 bg-blue-50 px-4 py-3 opacity-75"
+            className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-dashed border-blue-200 bg-blue-50 px-4 py-3"
             aria-label={`Conta prevista: ${projected.description}`}
           >
             <div className="flex-1 min-w-0">
@@ -85,6 +89,16 @@ export function BillChecklist({
                 <span>{formatCents(projected.expectedAmountCents)}</span>
               </div>
             </div>
+            {onPayProjected && (
+              <button
+                type="button"
+                onClick={() => onPayProjected(projected)}
+                disabled={payingProjectedId === projected.recurringBillId}
+                className="self-center rounded-lg border border-blue-500 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+              >
+                {payingProjectedId === projected.recurringBillId ? 'Criando…' : 'Pagar'}
+              </button>
+            )}
           </li>
         ))}
       </ul>

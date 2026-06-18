@@ -35,6 +35,7 @@ model FamilyGroup {
   budgets        Budget[]
   bills          Bill[]
   recurringBills RecurringBill[]
+  creditCards    CreditCard[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 }
@@ -42,6 +43,11 @@ model FamilyGroup {
 enum PaymentMethod {
   CASH_OR_DEBIT
   CREDIT_CARD
+}
+
+enum CreditCardStatus {
+  ACTIVE
+  ARCHIVED
 }
 
 enum ResourceType {
@@ -178,12 +184,42 @@ model RecurringBill {
   category             Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   ownerMemberId        String?
   ownerMember          User?               @relation("RecurringBillOwner", fields: [ownerMemberId], references: [id], onDelete: SetNull)
+  // Feature 012: learned payment profile (subscription). When an instance is
+  // paid, the template inherits the method + card so future instances are
+  // materialized PENDING already pre-filled (paymentMethod stays off the PENDING
+  // instance per the bill invariant; only creditCardId is copied as a default).
+  paymentMethod        PaymentMethod?
+  creditCardId         String?
+  creditCard           CreditCard?         @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
   deletedAt            DateTime?
   bills                Bill[]
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 
   @@index([groupId], map: "recurring_bill_group_idx")
+}
+
+// ─── Feature 012: Credit Card Management ─────────────────────────────────────
+
+model CreditCard {
+  id        String           @id @default(uuid())
+  groupId   String
+  group     FamilyGroup      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name      String           @db.VarChar(60)
+  // closingDay (dia de fechamento da fatura, 1–31) is informational/grouping
+  // only (FR-001a) — it never governs settlement.
+  closingDay Int
+  status    CreditCardStatus @default(ACTIVE)
+  bills     Bill[]
+  recurringBills RecurringBill[]
+  // normalizedName is a Postgres GENERATED ALWAYS column (raw SQL, collated
+  // pt_BR_ci_as) backing the partial unique index on active cards. @ignore so
+  // the Prisma client never reads/writes it.
+  normalizedName String        @ignore
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([groupId], map: "credit_card_group_idx")
 }
 
 model Bill {
@@ -212,11 +248,22 @@ model Bill {
   createdBy           User?          @relation("BillAuthor", fields: [createdById], references: [id], onDelete: SetNull)
   updatedById         String?
   updatedBy           User?          @relation("BillEditor", fields: [updatedById], references: [id], onDelete: SetNull)
+  // Feature 012: credit card link (purchase OR fatura role), fatura marker, and
+  // snapshot settlement self-link (which fatura settled this purchase).
+  creditCardId        String?
+  creditCard          CreditCard?    @relation(fields: [creditCardId], references: [id], onDelete: Restrict)
+  isFatura            Boolean        @default(false)
+  settledByFaturaId   String?
+  settledByFatura     Bill?          @relation("FaturaSettlement", fields: [settledByFaturaId], references: [id], onDelete: SetNull)
+  settledCharges      Bill[]         @relation("FaturaSettlement")
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
   // Partial unique index (recurringBillId, month) WHERE recurringBillId IS NOT NULL
   // is declared as raw SQL in the migration — idempotency guarantee for the scheduler.
+  // Partial unique (creditCardId) WHERE isFatura AND status='PENDING' (one pending
+  // fatura per card, FR-012a) is also raw SQL in the 012 migration.
   @@index([groupId, month], map: "bill_group_month_idx")
   @@index([groupId, paidDate], map: "bill_group_paiddate_idx")
+  @@index([creditCardId], map: "bill_credit_card_idx")
 }

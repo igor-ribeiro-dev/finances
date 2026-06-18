@@ -2,6 +2,7 @@ import { prisma } from '../../infra/prisma';
 
 export type RecurrenceInterval = 'MONTHLY' | 'ANNUAL';
 export type RecurringBillStatus = 'ACTIVE' | 'PAUSED' | 'STOPPED';
+export type PaymentMethod = 'CASH_OR_DEBIT' | 'CREDIT_CARD';
 
 export interface RecurringBillCategoryRef {
   id: string;
@@ -24,6 +25,10 @@ export type RecurringBillWithRelations = {
   category: RecurringBillCategoryRef | null;
   ownerMemberId: string | null;
   ownerMember: { id: string; name: string; familyGroupId: string } | null;
+  // Feature 012: learned payment profile (subscription)
+  paymentMethod: PaymentMethod | null;
+  creditCardId: string | null;
+  creditCard: { id: string; name: string } | null;
   deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -31,6 +36,7 @@ export type RecurringBillWithRelations = {
 
 const recurringBillInclude = {
   ownerMember: { select: { id: true, name: true, familyGroupId: true } },
+  creditCard: { select: { id: true, name: true } },
   category: {
     select: {
       id: true,
@@ -63,6 +69,9 @@ export interface UpdateRecurringBillData {
   status?: RecurringBillStatus;
   activeFromMonth?: Date;
   deletedAt?: Date | null;
+  // Feature 012: learned payment profile
+  paymentMethod?: PaymentMethod | null;
+  creditCardId?: string | null;
 }
 
 export const recurringBillRepository = {
@@ -111,6 +120,25 @@ export const recurringBillRepository = {
       data,
       include: recurringBillInclude,
     }) as Promise<RecurringBillWithRelations>;
+  },
+
+  /**
+   * Feature 012: the template learns the payment method + card last used to pay
+   * one of its instances (subscription pre-fill). Best-effort updateMany so it
+   * never throws if the template was meanwhile removed.
+   */
+  async learnPaymentProfile(
+    id: string,
+    paymentMethod: PaymentMethod,
+    creditCardId: string | null,
+    expectedAmountCents: number,
+    tx?: import('@prisma/client').Prisma.TransactionClient,
+  ): Promise<void> {
+    const client = tx ?? prisma;
+    await client.recurringBill.updateMany({
+      where: { id },
+      data: { paymentMethod, creditCardId, expectedAmountCents },
+    });
   },
 
   async softDelete(id: string): Promise<void> {

@@ -73,8 +73,9 @@ describe('PaymentsPage', () => {
     expect(await screen.findByText(/nenhuma conta registrada/i)).toBeInTheDocument();
   });
 
-  it('renders "Contas Fixas" section', async () => {
+  it('does NOT render "Contas Fixas" section (moved to its own page)', async () => {
     renderPage();
-    expect(await screen.findByRole('heading', { name: /contas fixas/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /pagamentos/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /contas fixas/i })).not.toBeInTheDocument();
   });
 });

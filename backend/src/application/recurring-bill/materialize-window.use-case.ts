@@ -49,6 +49,9 @@ export async function materializeWindowUseCase(groupId?: string): Promise<{ coun
         categoryId: template.categoryId,
         ownerMemberId: template.ownerMemberId,
         recurringBillId: template.id,
+        // Inherit the subscription's card so the PENDING instance is pre-filled
+        // (value already inherited via expectedAmountCents). Feature 012.
+        creditCardId: template.creditCardId,
       });
     }
   }

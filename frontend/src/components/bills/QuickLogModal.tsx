@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { billService } from '../../services/bill.service';
+import { creditCardService } from '../../services/credit-card.service';
 import { listGroupMembers, type GroupMember } from '../../services/group.service';
 import type { PaymentMethod, ServiceError } from '../../types/bill';
+import type { CreditCard } from '../../types/credit-card';
 
 interface Props {
   open: boolean;
@@ -22,6 +24,8 @@ export function QuickLogModal({ open, onClose, onSuccess }: Props) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH_OR_DEBIT');
   const [paidByMemberId, setPaidByMemberId] = useState('');
   const [categoryId] = useState<string | null>(null);
+  const [creditCardId, setCreditCardId] = useState('');
+  const [cards, setCards] = useState<CreditCard[]>([]);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -34,12 +38,17 @@ export function QuickLogModal({ open, onClose, onSuccess }: Props) {
     setDate(todayIso());
     setPaymentMethod('CASH_OR_DEBIT');
     setPaidByMemberId('');
+    setCreditCardId('');
     setErrors({});
     void listGroupMembers()
       .then((list) => {
         setMembers(list);
         if (list[0]) setPaidByMemberId(list[0].id);
       })
+      .catch(() => {});
+    void creditCardService
+      .listCards()
+      .then((list) => setCards(list.filter((c) => c.status === 'ACTIVE')))
       .catch(() => {});
   }, [open]);
 
@@ -61,6 +70,9 @@ export function QuickLogModal({ open, onClose, onSuccess }: Props) {
     if (amountCents <= 0) next['amount'] = 'O valor deve ser maior que zero.';
     if (!date) next['date'] = 'A data é obrigatória.';
     if (!paidByMemberId) next['paidByMemberId'] = 'Selecione o responsável.';
+    if (paymentMethod === 'CREDIT_CARD' && !creditCardId) {
+      next['creditCardId'] = 'Selecione o cartão de crédito utilizado.';
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -78,6 +90,7 @@ export function QuickLogModal({ open, onClose, onSuccess }: Props) {
         paymentMethod,
         paidByMemberId,
         categoryId,
+        creditCardId: paymentMethod === 'CREDIT_CARD' ? creditCardId : null,
       });
       onSuccess();
     } catch (err) {
@@ -226,6 +239,32 @@ export function QuickLogModal({ open, onClose, onSuccess }: Props) {
               </div>
             </fieldset>
           </div>
+
+          {paymentMethod === 'CREDIT_CARD' && (
+            <div>
+              <label htmlFor="ql-card" className="block text-sm font-medium text-gray-700">
+                Cartão
+              </label>
+              <select
+                id="ql-card"
+                value={creditCardId}
+                onChange={(e) => setCreditCardId(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              >
+                <option value="" disabled>
+                  Selecione o cartão
+                </option>
+                {cards.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {errors['creditCardId'] && (
+                <p className="mt-1 text-xs text-red-600">{errors['creditCardId']}</p>
+              )}
+            </div>
+          )}
 
           {errors['_root'] && (
             <p role="alert" className="text-sm text-red-600">

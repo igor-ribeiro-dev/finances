@@ -21,6 +21,10 @@ export function mapRecurringBillToResponse(t: RecurringBillWithRelations) {
     category: t.category ? { id: t.category.id, name: t.category.name } : null,
     ownerMemberId: t.ownerMemberId,
     ownerMember: t.ownerMember ? { id: t.ownerMember.id, name: t.ownerMember.name } : null,
+    // Feature 012: learned payment profile (subscription)
+    paymentMethod: t.paymentMethod,
+    creditCardId: t.creditCardId,
+    creditCard: t.creditCard ? { id: t.creditCard.id, name: t.creditCard.name } : null,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
   };

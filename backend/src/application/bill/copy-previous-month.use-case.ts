@@ -23,8 +23,10 @@ export async function copyPreviousMonthUseCase(input: {
 
   // Only avulsas (recurringBillId IS NULL) that are not CANCELLED
   const sourceBills = await billRepository.listByMonth(input.groupId, gte);
+  // Faturas are never copied (FR-005): they are created only via the dedicated
+  // "registrar fatura" action.
   const eligible = sourceBills.filter(
-    (b) => b.recurringBillId === null && b.status !== 'CANCELLED',
+    (b) => b.recurringBillId === null && b.status !== 'CANCELLED' && !b.isFatura,
   );
 
   if (input.dryRun) return { count: eligible.length };

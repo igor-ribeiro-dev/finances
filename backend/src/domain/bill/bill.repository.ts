@@ -31,6 +31,11 @@ export type BillWithRelations = {
   paymentMethod: PaymentMethod | null;
   createdById: string | null;
   updatedById: string | null;
+  // Feature 012: credit card link + fatura marker + settlement self-link
+  creditCardId: string | null;
+  creditCard: { id: string; name: string } | null;
+  isFatura: boolean;
+  settledByFaturaId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -38,6 +43,7 @@ export type BillWithRelations = {
 const billInclude = {
   ownerMember: { select: { id: true, name: true, familyGroupId: true } },
   paidByMember: { select: { id: true, name: true } },
+  creditCard: { select: { id: true, name: true } },
   category: {
     select: {
       id: true,
@@ -65,6 +71,10 @@ export interface CreateBillData {
   actualAmountCents?: number | null;
   paidByMemberId?: string | null;
   paymentMethod?: PaymentMethod | null;
+  // Feature 012
+  creditCardId?: string | null;
+  isFatura?: boolean;
+  settledByFaturaId?: string | null;
 }
 
 export interface UpdateBillData {
@@ -80,6 +90,10 @@ export interface UpdateBillData {
   paidByMemberId?: string | null;
   paymentMethod?: PaymentMethod | null;
   updatedById?: string | null;
+  // Feature 012
+  creditCardId?: string | null;
+  isFatura?: boolean;
+  settledByFaturaId?: string | null;
 }
 
 export interface CreateManyBillRow {
@@ -92,6 +106,9 @@ export interface CreateManyBillRow {
   categoryId: string | null;
   ownerMemberId: string | null;
   recurringBillId: string | null;
+  // Feature 012: a recurring subscription on a card seeds its instances with the
+  // card (PENDING), so paying is one click. Omitted by copy-previous-month.
+  creditCardId?: string | null;
 }
 
 /** Month spending sums in integer cents for the dashboard (feature 009/011). */
@@ -129,6 +146,9 @@ export const billRepository = {
         actualAmountCents: data.actualAmountCents ?? null,
         paidByMemberId: data.paidByMemberId ?? null,
         paymentMethod: data.paymentMethod ?? null,
+        creditCardId: data.creditCardId ?? null,
+        isFatura: data.isFatura ?? false,
+        settledByFaturaId: data.settledByFaturaId ?? null,
       },
       include: billInclude,
     }) as Promise<BillWithRelations>;
@@ -142,8 +162,9 @@ export const billRepository = {
   },
 
   async listByMonth(groupId: string, month: Date): Promise<BillWithRelations[]> {
+    const lt = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 1));
     return prisma.bill.findMany({
-      where: { groupId, month },
+      where: { groupId, month: { gte: month, lt } },
       orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
       include: billInclude,
     }) as Promise<BillWithRelations[]>;
@@ -179,6 +200,48 @@ export const billRepository = {
     await prisma.bill.delete({ where: { id } });
   },
 
+  /**
+   * Snapshot settlement (FR-009): mark every currently-open credit-card purchase
+   * of the card as settled by this fatura. Returns the number of charges settled.
+   */
+  async settleOpenCharges(
+    creditCardId: string,
+    faturaId: string,
+    groupId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<number> {
+    const client = tx ?? prisma;
+    const res = await client.bill.updateMany({
+      where: {
+        groupId,
+        creditCardId,
+        isFatura: false,
+        paymentMethod: 'CREDIT_CARD',
+        status: 'PAID',
+        settledByFaturaId: null,
+      },
+      data: { settledByFaturaId: faturaId },
+    });
+    return res.count;
+  },
+
+  /** Reverses a fatura's settlement (FR-009): clears exactly the charges it settled. */
+  async unsettleByFatura(faturaId: string, tx?: Prisma.TransactionClient): Promise<number> {
+    const client = tx ?? prisma;
+    const res = await client.bill.updateMany({
+      where: { settledByFaturaId: faturaId },
+      data: { settledByFaturaId: null },
+    });
+    return res.count;
+  },
+
+  /** Count of PENDING faturas for a card — guards FR-012a (one pending fatura). */
+  async countPendingFaturas(creditCardId: string, groupId: string): Promise<number> {
+    return prisma.bill.count({
+      where: { groupId, creditCardId, isFatura: true, status: 'PENDING' },
+    });
+  },
+
   async createMany(rows: CreateManyBillRow[], skipDuplicates: boolean): Promise<{ count: number }> {
     return prisma.bill.createMany({ data: rows, skipDuplicates });
   },
@@ -191,7 +254,10 @@ export const billRepository = {
    */
   async aggregateMonthSpending(groupId: string, month: string): Promise<MonthSpendingAggregate> {
     const range = monthDateRange(month);
-    const where = { groupId, status: 'PAID' as const, paidDate: range };
+    // isFatura excluded (FR-010): a paid fatura is a cash event whose child
+    // credit-card purchases already counted at their purchase date — counting
+    // the fatura too would double-count.
+    const where = { groupId, status: 'PAID' as const, paidDate: range, isFatura: false };
     const [byMember, byCategory] = await Promise.all([
       prisma.bill.groupBy({
         by: ['paidByMemberId'],

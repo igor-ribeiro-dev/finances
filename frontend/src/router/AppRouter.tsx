@@ -12,6 +12,8 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { CategoriesPage } from '../pages/CategoriesPage';
 import { BudgetsPage } from '../pages/BudgetsPage';
 import { PaymentsPage } from '../pages/PaymentsPage';
+import { CreditCardsPage } from '../pages/CreditCardsPage';
+import { RecurringBillsPage } from '../pages/RecurringBillsPage';
 
 function SessionExpiredHandler() {
   const navigate = useNavigate();
@@ -84,11 +86,21 @@ export function AppRouter() {
             }
           />
           <Route
+            path="/contas-fixas"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <RecurringBillsPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/cartoes"
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <div className="p-8 text-gray-500">Em breve</div>
+                  <CreditCardsPage />
                 </AppLayout>
               </ProtectedRoute>
             }

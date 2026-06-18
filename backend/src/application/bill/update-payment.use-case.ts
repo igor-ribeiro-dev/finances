@@ -1,5 +1,7 @@
 import { AppError } from '../../api/errors';
 import { billRepository } from '../../domain/bill/bill.repository';
+import { resolveCreditCardForSpending } from './credit-card-link';
+import { learnRecurringPaymentProfile } from './learn-recurring-payment';
 
 export interface UpdatePaymentInput {
   userId: string;
@@ -10,6 +12,7 @@ export interface UpdatePaymentInput {
     actualAmountCents: number;
     paidByMemberId: string;
     paymentMethod: 'CASH_OR_DEBIT' | 'CREDIT_CARD';
+    creditCardId?: string | null;
   };
 }
 
@@ -26,11 +29,27 @@ export async function updatePaymentUseCase(input: UpdatePaymentInput) {
     );
   }
 
-  return billRepository.update(id, {
+  // FR-011: editing a credit-card purchase may move it to another card; a fatura
+  // keeps its own card link.
+  const creditCardId = existing.isFatura
+    ? existing.creditCardId
+    : await resolveCreditCardForSpending(groupId, body.paymentMethod, body.creditCardId);
+
+  const bill = await billRepository.update(id, {
     paidDate: new Date(`${body.paidDate}T00:00:00Z`),
     actualAmountCents: body.actualAmountCents,
     paidByMemberId: body.paidByMemberId,
     paymentMethod: body.paymentMethod,
+    creditCardId,
     updatedById: userId,
   });
+  // Correcting the payment updates what the parent conta fixa learned.
+  await learnRecurringPaymentProfile(
+    existing.recurringBillId,
+    existing.isFatura,
+    body.paymentMethod,
+    creditCardId,
+    body.actualAmountCents,
+  );
+  return bill;
 }

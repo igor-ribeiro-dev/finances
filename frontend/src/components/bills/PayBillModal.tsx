@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { billService } from '../../services/bill.service';
+import { creditCardService } from '../../services/credit-card.service';
 import { listGroupMembers, type GroupMember } from '../../services/group.service';
 import { formatCents } from '../../utils/money';
 import type { Bill, PaymentMethod, ServiceError } from '../../types/bill';
+import type { CreditCard } from '../../types/credit-card';
 
 interface Props {
   open: boolean;
@@ -23,6 +25,8 @@ export function PayBillModal({ open, bill, mode, onClose, onSuccess }: Props) {
   const [amountCents, setAmountCents] = useState(bill.expectedAmountCents);
   const [paidByMemberId, setPaidByMemberId] = useState(bill.ownerMemberId ?? '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH_OR_DEBIT');
+  const [creditCardId, setCreditCardId] = useState('');
+  const [cards, setCards] = useState<CreditCard[]>([]);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,11 +34,17 @@ export function PayBillModal({ open, bill, mode, onClose, onSuccess }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    // Reset to payment defaults on open
-    setPaidDate(bill.payment?.paidDate ?? todayIso());
+    // Reset to payment defaults on open. Pay mode always starts with today;
+    // edit mode keeps the existing payment date.
+    setPaidDate(mode === 'pay' ? todayIso() : (bill.payment?.paidDate ?? todayIso()));
     setAmountCents(bill.payment?.actualAmountCents ?? bill.expectedAmountCents);
     setPaidByMemberId(bill.payment?.paidByMemberId ?? bill.ownerMemberId ?? '');
-    setPaymentMethod(bill.payment?.paymentMethod ?? 'CASH_OR_DEBIT');
+    // For a PENDING instance that inherited a card from its conta fixa
+    // (subscription), default the method to credit card so paying is one click.
+    setPaymentMethod(
+      bill.payment?.paymentMethod ?? (bill.creditCardId ? 'CREDIT_CARD' : 'CASH_OR_DEBIT'),
+    );
+    setCreditCardId(bill.creditCardId ?? '');
     setError(null);
     // Fetch members
     void listGroupMembers()
@@ -45,7 +55,11 @@ export function PayBillModal({ open, bill, mode, onClose, onSuccess }: Props) {
       .catch(() => {
         /* keep empty list */
       });
-  }, [open]);
+    void creditCardService
+      .listCards()
+      .then((list) => setCards(list.filter((c) => c.status === 'ACTIVE')))
+      .catch(() => {});
+  }, [open, mode]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -69,10 +83,20 @@ export function PayBillModal({ open, bill, mode, onClose, onSuccess }: Props) {
       setError('O valor pago deve ser maior que zero.');
       return;
     }
+    if (paymentMethod === 'CREDIT_CARD' && !creditCardId) {
+      setError('Selecione o cartão de crédito utilizado.');
+      return;
+    }
     setIsSaving(true);
     setError(null);
     try {
-      const body = { paidDate, actualAmountCents: amountCents, paidByMemberId, paymentMethod };
+      const body = {
+        paidDate,
+        actualAmountCents: amountCents,
+        paidByMemberId,
+        paymentMethod,
+        creditCardId: paymentMethod === 'CREDIT_CARD' ? creditCardId : null,
+      };
       if (mode === 'pay') {
         await billService.pay(bill.id, body);
       } else {
@@ -205,6 +229,29 @@ export function PayBillModal({ open, bill, mode, onClose, onSuccess }: Props) {
               </div>
             </fieldset>
           </div>
+
+          {paymentMethod === 'CREDIT_CARD' && (
+            <div>
+              <label htmlFor="pay-card" className="block text-sm font-medium text-gray-700">
+                Cartão
+              </label>
+              <select
+                id="pay-card"
+                value={creditCardId}
+                onChange={(e) => setCreditCardId(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              >
+                <option value="" disabled>
+                  Selecione o cartão
+                </option>
+                {cards.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {error && (
             <p role="alert" className="text-sm text-red-600">

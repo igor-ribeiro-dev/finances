@@ -1,4 +1,4 @@
-import { LayoutDashboard, Tag, PiggyBank, CalendarClock, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Tag, PiggyBank, CalendarClock, Repeat, CreditCard } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type NavItemStatus = 'active' | 'coming-soon';
@@ -41,10 +41,17 @@ export const NAV_ITEMS: NavItem[] = [
     status: 'active',
   },
   {
+    id: 'contas-fixas',
+    label: 'Contas Fixas',
+    path: '/contas-fixas',
+    icon: Repeat,
+    status: 'active',
+  },
+  {
     id: 'cartoes',
     label: 'Cartões de Crédito',
     path: '/cartoes',
     icon: CreditCard,
-    status: 'coming-soon',
+    status: 'active',
   },
 ];

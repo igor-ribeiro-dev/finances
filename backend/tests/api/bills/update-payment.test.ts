@@ -15,6 +15,7 @@ jest.mock('../../../src/infra/prisma', () => ({
       delete: jest.fn(),
       createMany: jest.fn(),
     },
+    creditCard: { findFirst: jest.fn() },
     recurringBill: { findMany: jest.fn() },
   },
 }));
@@ -26,6 +27,9 @@ const app = createApp();
 const session = prisma.session as unknown as { findUnique: jest.Mock; update: jest.Mock };
 const user = prisma.user as unknown as { findUnique: jest.Mock; findFirst: jest.Mock };
 const bill = prisma.bill as unknown as { findFirst: jest.Mock; update: jest.Mock };
+const creditCard = prisma.creditCard as unknown as { findFirst: jest.Mock };
+
+const CARD_UUID = 'bb0eebc9-9c0b-4ef8-bb6d-6bb9bd380a22';
 
 function setupAuthedMember(groupId = 'group-1') {
   session.findUnique.mockResolvedValue({
@@ -35,6 +39,8 @@ function setupAuthedMember(groupId = 'group-1') {
   });
   session.update.mockResolvedValue({});
   user.findUnique.mockResolvedValue({ familyGroupId: groupId });
+  // FR-003: a CREDIT_CARD payment resolves an active card in the group.
+  creditCard.findFirst.mockResolvedValue({ id: CARD_UUID, groupId, status: 'ACTIVE' });
 }
 
 function mockBillWithRelations(base: ReturnType<typeof createBillInDb>) {
@@ -48,6 +54,7 @@ const validUpdatePaymentBody = {
   actualAmountCents: 200000,
   paidByMemberId: MEMBER_UUID,
   paymentMethod: 'CREDIT_CARD',
+  creditCardId: CARD_UUID,
 };
 
 describe('PATCH /api/v1/bills/:id/payment', () => {
