@@ -1,6 +1,8 @@
 ---
 
 description: "Task list — Credit Card Management (feature 012)"
+status: "Complete"
+completed_on: "2026-06-17"
 ---
 
 # Tasks: Credit Card Management (Gerenciamento de Cartões de Crédito)
