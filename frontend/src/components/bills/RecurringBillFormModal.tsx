@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { Modal } from '@/components/ui';
 import { recurringBillService } from '../../services/recurring-bill.service';
 import { categoryService } from '../../services/category.service';
 import { listGroupMembers, type GroupMember } from '../../services/group.service';
@@ -77,17 +77,6 @@ export function RecurringBillFormModal({ open, mode, item, onClose, onSuccess }:
       .catch(() => {});
   }, [open, mode, item]);
 
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !isSaving) onClose();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, isSaving, onClose]);
-
-  if (!open) return null;
-
   const rootCategories = categories.filter((c) => c.parentId === null);
 
   function getFieldError(field: string) {
@@ -154,216 +143,188 @@ export function RecurringBillFormModal({ open, mode, item, onClose, onSuccess }:
   const title = mode === 'create' ? 'Nova conta fixa' : 'Editar conta fixa';
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="recurring-modal-title"
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isSaving) onClose();
-      }}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="mb-4 flex items-center justify-between">
-          <h2 id="recurring-modal-title" className="text-lg font-semibold text-gray-900">
-            {title}
-          </h2>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={title}
+      footer={
+        <>
           <button
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            aria-label="Fechar"
-            className="rounded-md p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-fg hover:bg-bg disabled:opacity-50"
           >
-            <X className="h-5 w-5" />
+            Cancelar
           </button>
-        </header>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Description */}
-          <div>
-            <label htmlFor="rb-description" className="block text-sm font-medium text-gray-700">
-              Descrição <span aria-hidden="true">*</span>
-            </label>
-            <input
-              id="rb-description"
-              type="text"
-              maxLength={200}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              disabled={isSaving}
-              autoFocus
-              aria-required="true"
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
-            />
-            {getFieldError('description') && (
-              <p className="mt-1 text-sm text-red-600" role="alert">
-                {getFieldError('description')}
-              </p>
-            )}
-          </div>
-
-          {/* Amount */}
-          <div>
-            <label htmlFor="rb-amount" className="block text-sm font-medium text-gray-700">
-              Valor (R$) <span aria-hidden="true">*</span>
-            </label>
-            <input
-              id="rb-amount"
-              type="text"
-              inputMode="decimal"
-              placeholder="0,00"
-              value={amountInput}
-              onChange={(e) => setAmountInput(e.target.value)}
-              disabled={isSaving}
-              aria-required="true"
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
-            />
-            {getFieldError('expectedAmountCents') && (
-              <p className="mt-1 text-sm text-red-600" role="alert">
-                {getFieldError('expectedAmountCents')}
-              </p>
-            )}
-          </div>
-
-          {/* Due day + Interval */}
-          <div className="flex gap-3">
-            <div className="w-28">
-              <label htmlFor="rb-due-day" className="block text-sm font-medium text-gray-700">
-                Dia <span aria-hidden="true">*</span>
-              </label>
-              <input
-                id="rb-due-day"
-                type="number"
-                min={1}
-                max={31}
-                value={dueDay}
-                onChange={(e) => setDueDay(e.target.value)}
-                disabled={isSaving}
-                aria-required="true"
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
-              />
-              {getFieldError('dueDay') && (
-                <p className="mt-1 text-sm text-red-600" role="alert">
-                  {getFieldError('dueDay')}
-                </p>
-              )}
-            </div>
-            <div className="flex-1">
-              <label htmlFor="rb-interval" className="block text-sm font-medium text-gray-700">
-                Frequência <span aria-hidden="true">*</span>
-              </label>
-              <select
-                id="rb-interval"
-                value={interval}
-                onChange={(e) => setInterval(e.target.value as RecurrenceInterval)}
-                disabled={isSaving}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
-              >
-                <option value="MONTHLY">Mensal</option>
-                <option value="ANNUAL">Anual</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Start month (create only) */}
-          {mode === 'create' && (
-            <div>
-              <label htmlFor="rb-start-month" className="block text-sm font-medium text-gray-700">
-                Início <span aria-hidden="true">*</span>
-              </label>
-              <input
-                id="rb-start-month"
-                type="month"
-                value={startMonth}
-                onChange={(e) => setStartMonth(e.target.value)}
-                disabled={isSaving}
-                aria-required="true"
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
-              />
-              <label className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                <input
-                  type="checkbox"
-                  checked={includeStartMonth}
-                  onChange={(e) => setIncludeStartMonth(e.target.checked)}
-                  disabled={isSaving}
-                  className="accent-teal-600"
-                />
-                Gerar conta já para o mês inicial
-              </label>
-            </div>
-          )}
-
-          {/* Category */}
-          <div>
-            <label htmlFor="rb-category" className="block text-sm font-medium text-gray-700">
-              Categoria <span className="text-gray-400">(opcional)</span>
-            </label>
-            <select
-              id="rb-category"
-              value={categoryId ?? ''}
-              onChange={(e) => setCategoryId(e.target.value || null)}
-              disabled={isSaving}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
-            >
-              <option value="">Nenhuma</option>
-              {rootCategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Owner */}
-          <div>
-            <label htmlFor="rb-owner" className="block text-sm font-medium text-gray-700">
-              Responsável <span className="text-gray-400">(opcional)</span>
-            </label>
-            <select
-              id="rb-owner"
-              value={ownerMemberId ?? ''}
-              onChange={(e) => setOwnerMemberId(e.target.value || null)}
-              disabled={isSaving}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
-            >
-              <option value="">Nenhum</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {localError && (
-            <p className="text-sm text-red-600" role="alert">
-              {localError}
+          <button
+            type="submit"
+            form="recurring-bill-form"
+            disabled={isSaving}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
+          >
+            {isSaving ? 'Salvando…' : 'Salvar'}
+          </button>
+        </>
+      }
+    >
+      <form id="recurring-bill-form" onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="rb-description" className="block text-sm font-medium text-fg">
+            Descrição <span aria-hidden="true">*</span>
+          </label>
+          <input
+            id="rb-description"
+            type="text"
+            maxLength={200}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={isSaving}
+            autoFocus
+            aria-required="true"
+            className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-fg focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+          />
+          {getFieldError('description') && (
+            <p className="mt-1 text-sm text-danger" role="alert">
+              {getFieldError('description')}
             </p>
           )}
+        </div>
 
-          <footer className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
+        <div>
+          <label htmlFor="rb-amount" className="block text-sm font-medium text-fg">
+            Valor (R$) <span aria-hidden="true">*</span>
+          </label>
+          <input
+            id="rb-amount"
+            type="text"
+            inputMode="decimal"
+            placeholder="0,00"
+            value={amountInput}
+            onChange={(e) => setAmountInput(e.target.value)}
+            disabled={isSaving}
+            aria-required="true"
+            className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-fg focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+          />
+          {getFieldError('expectedAmountCents') && (
+            <p className="mt-1 text-sm text-danger" role="alert">
+              {getFieldError('expectedAmountCents')}
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-3">
+          <div className="w-28">
+            <label htmlFor="rb-due-day" className="block text-sm font-medium text-fg">
+              Dia <span aria-hidden="true">*</span>
+            </label>
+            <input
+              id="rb-due-day"
+              type="number"
+              min={1}
+              max={31}
+              value={dueDay}
+              onChange={(e) => setDueDay(e.target.value)}
               disabled={isSaving}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
+              aria-required="true"
+              className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-fg focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+            />
+            {getFieldError('dueDay') && (
+              <p className="mt-1 text-sm text-danger" role="alert">
+                {getFieldError('dueDay')}
+              </p>
+            )}
+          </div>
+          <div className="flex-1">
+            <label htmlFor="rb-interval" className="block text-sm font-medium text-fg">
+              Frequência <span aria-hidden="true">*</span>
+            </label>
+            <select
+              id="rb-interval"
+              value={interval}
+              onChange={(e) => setInterval(e.target.value as RecurrenceInterval)}
               disabled={isSaving}
-              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+              className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-fg focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
             >
-              {isSaving ? 'Salvando…' : 'Salvar'}
-            </button>
-          </footer>
-        </form>
-      </div>
-    </div>
+              <option value="MONTHLY">Mensal</option>
+              <option value="ANNUAL">Anual</option>
+            </select>
+          </div>
+        </div>
+
+        {mode === 'create' && (
+          <div>
+            <label htmlFor="rb-start-month" className="block text-sm font-medium text-fg">
+              Início <span aria-hidden="true">*</span>
+            </label>
+            <input
+              id="rb-start-month"
+              type="month"
+              value={startMonth}
+              onChange={(e) => setStartMonth(e.target.value)}
+              disabled={isSaving}
+              aria-required="true"
+              className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-fg focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+            />
+            <label className="mt-2 flex items-center gap-2 text-sm text-fg-muted">
+              <input
+                type="checkbox"
+                checked={includeStartMonth}
+                onChange={(e) => setIncludeStartMonth(e.target.checked)}
+                disabled={isSaving}
+                className="accent-primary"
+              />
+              Gerar conta já para o mês inicial
+            </label>
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="rb-category" className="block text-sm font-medium text-fg">
+            Categoria <span className="text-fg-muted">(opcional)</span>
+          </label>
+          <select
+            id="rb-category"
+            value={categoryId ?? ''}
+            onChange={(e) => setCategoryId(e.target.value || null)}
+            disabled={isSaving}
+            className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-fg focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+          >
+            <option value="">Nenhuma</option>
+            {rootCategories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="rb-owner" className="block text-sm font-medium text-fg">
+            Responsável <span className="text-fg-muted">(opcional)</span>
+          </label>
+          <select
+            id="rb-owner"
+            value={ownerMemberId ?? ''}
+            onChange={(e) => setOwnerMemberId(e.target.value || null)}
+            disabled={isSaving}
+            className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-fg focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+          >
+            <option value="">Nenhum</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {localError && (
+          <p className="text-sm text-danger" role="alert">
+            {localError}
+          </p>
+        )}
+      </form>
+    </Modal>
   );
 }

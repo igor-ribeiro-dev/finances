@@ -23,12 +23,12 @@ export function MonthSelector({ month, onChange, disabled, maxMonth }: MonthSele
         disabled={disabled}
         aria-label="Mês anterior"
         onClick={() => onChange(addMonths(month, -1))}
-        className="rounded-lg border border-gray-300 p-2 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+        className="rounded-lg border border-border p-2 text-fg-muted hover:bg-bg disabled:opacity-50"
       >
         <ChevronLeft size={18} aria-hidden />
       </button>
       <span
-        className="min-w-[10rem] text-center text-base font-semibold text-gray-900"
+        className="min-w-[10rem] text-center text-base font-semibold text-fg"
         aria-live="polite"
       >
         {formatMonthLabel(month)}
@@ -38,7 +38,7 @@ export function MonthSelector({ month, onChange, disabled, maxMonth }: MonthSele
         disabled={nextDisabled}
         aria-label="Próximo mês"
         onClick={() => onChange(addMonths(month, 1))}
-        className="rounded-lg border border-gray-300 p-2 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+        className="rounded-lg border border-border p-2 text-fg-muted hover:bg-bg disabled:opacity-50"
       >
         <ChevronRight size={18} aria-hidden />
       </button>

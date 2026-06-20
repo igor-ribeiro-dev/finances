@@ -1,4 +1,5 @@
 import type { Config } from 'jest';
+import { resolve } from 'path';
 
 const config: Config = {
   preset: 'ts-jest',
@@ -13,6 +14,7 @@ const config: Config = {
           moduleResolution: 'node',
           esModuleInterop: true,
           strict: true,
+          paths: { '@/*': ['./src/*'] },
         },
       },
     ],
@@ -20,6 +22,7 @@ const config: Config = {
   testMatch: ['**/tests/**/*.test.tsx', '**/tests/**/*.test.ts'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: {
+    '^@/(.*)$': resolve(__dirname, './src/$1'),
     '\\.(css)$': '<rootDir>/src/__mocks__/fileMock.js',
   },
 };

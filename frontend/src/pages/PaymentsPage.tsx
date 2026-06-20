@@ -100,14 +100,14 @@ export function PaymentsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-5 p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">Pagamentos</h1>
+        <h1 className="text-2xl font-bold text-fg">Pagamentos</h1>
         <div className="flex flex-wrap items-center gap-3">
           <MonthSelector month={selectedMonth} onChange={handleMonthChange} disabled={isLoading} />
           {!isCurrentMonth && (
             <button
               type="button"
               onClick={handleBackToCurrentMonth}
-              className="text-sm font-medium text-teal-600 hover:underline"
+              className="text-sm font-medium text-primary hover:underline"
             >
               Voltar ao mês atual
             </button>
@@ -122,7 +122,7 @@ export function PaymentsPage() {
             onClick={() => setQuickLogOpen(true)}
             disabled={isLoading}
             aria-label="Registrar gasto"
-            className="inline-flex items-center gap-2 rounded-lg border border-teal-600 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-teal-600 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
           >
             <ShoppingCart className="h-4 w-4" aria-hidden="true" />
             Registrar gasto
@@ -131,7 +131,7 @@ export function PaymentsPage() {
             type="button"
             onClick={() => setFormOpen(true)}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             Nova conta
@@ -142,7 +142,7 @@ export function PaymentsPage() {
       {error && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-lg border border-red-200 bg-danger/10 px-4 py-3 text-sm text-danger"
         >
           Erro ao carregar contas: {error.message}
         </div>

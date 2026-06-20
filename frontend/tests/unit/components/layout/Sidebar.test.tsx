@@ -6,6 +6,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Sidebar } from '../../../../src/components/layout/Sidebar';
 import { useAuth } from '../../../../src/contexts/AuthContext';
+import { ThemeProvider } from '../../../../src/theme/ThemeProvider';
 
 // Mock useAuth
 jest.mock('../../../../src/contexts/AuthContext', () => ({
@@ -47,9 +48,11 @@ function renderSidebar(path = '/', onClose?: jest.Mock) {
   });
 
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Sidebar onClose={onClose} />
-    </MemoryRouter>,
+    <ThemeProvider>
+      <MemoryRouter initialEntries={[path]}>
+        <Sidebar onClose={onClose} />
+      </MemoryRouter>
+    </ThemeProvider>,
   );
 }
 

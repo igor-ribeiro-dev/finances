@@ -100,13 +100,13 @@ description: "Task list for Frontend Redesign — Modern UI with Liquid Glass Ae
 - [ ] T041 [P] [US1] Migrar páginas de auth/onboarding (`LoginPage`, `RegisterPage`, `ForgotPasswordPage`, `ResetPasswordPage`, `OnboardingPage`) para primitivos/tokens em `frontend/src/pages/*`
 - [ ] T042 [P] [US1] Migrar componentes do dashboard (`FamilySummaryCard`, `CategorySpendingList`, `MemberSpendingList`, `BudgetProgressBar`, `DashboardMonthSelector`) para `Card`/tokens em `frontend/src/components/dashboard/*`
 - [ ] T043 [P] [US1] Migrar `DashboardPage` para tokens em `frontend/src/pages/DashboardPage.tsx`
-- [ ] T044 [P] [US1] Migrar componentes de bills (`BillItem`, `BillChecklist`, `MonthBillsSummary`, `CopyPreviousMonthButton`, `RecurringBillsSection`; `*FormModal`/`PayBillModal`/`QuickLogModal`/`RecurringBillFormModal` → `Modal`) para primitivos/tokens em `frontend/src/components/bills/*`
-- [ ] T045 [P] [US1] Migrar `PaymentsPage` e `RecurringBillsPage` para tokens em `frontend/src/pages/*`
-- [ ] T046 [P] [US1] Migrar componentes de budget (`AllocationSummaryBar`, `CategoryBudgetTree`, `FamilyBudgetSection`, `LimitEditor`, `MemberBudgetList`, `MonthSelector`, `CopyPreviousMonthDialog`→`Modal`) + `BudgetsPage` para tokens em `frontend/src/components/budget/*` e `frontend/src/pages/BudgetsPage.tsx`
-- [ ] T047 [P] [US1] Migrar componentes de category (`CategoryRow`, `CategoryTree`, `CategoryFormModal`→`Modal`, `DeleteCategoryModal`→`Modal`) + `CategoriesPage` para tokens em `frontend/src/components/category/*` e `frontend/src/pages/CategoriesPage.tsx`
-- [ ] T048 [P] [US1] Migrar componentes de credit-cards (`CreditCardList`, `CreditCardDetail`, `CreditCardSummarySection`, `CreditCardFormModal`→`Modal`, `RegisterFaturaModal`→`Modal`) + `CreditCardsPage` para tokens em `frontend/src/components/credit-cards/*` e `frontend/src/pages/CreditCardsPage.tsx`
-- [ ] T049 [US1] Testes de regressão de migração: telas representativas renderizam via tokens; `*FormModal` usam `Modal` (abre/fecha); fluxos disparam os mesmos handlers em `frontend/src/components/**/*.test.tsx`
-- [ ] T050 [US1] Gate "sem cor hard-coded": grep em `frontend/src` não encontra `teal-/blue-/indigo-/bg-white/text-gray-9` fora dos tokens (SC-001/SC-008)
+- [X] T044 [P] [US1] Migrar componentes de bills (`BillItem`, `BillChecklist`, `MonthBillsSummary`, `CopyPreviousMonthButton`, `RecurringBillsSection`; `*FormModal`/`PayBillModal`/`QuickLogModal`/`RecurringBillFormModal` → `Modal`) para primitivos/tokens em `frontend/src/components/bills/*`
+- [X] T045 [P] [US1] Migrar `PaymentsPage` e `RecurringBillsPage` para tokens em `frontend/src/pages/*`
+- [X] T046 [P] [US1] Migrar componentes de budget (`AllocationSummaryBar`, `CategoryBudgetTree`, `FamilyBudgetSection`, `LimitEditor`, `MemberBudgetList`, `MonthSelector`, `CopyPreviousMonthDialog`→`Modal`) + `BudgetsPage` para tokens em `frontend/src/components/budget/*` e `frontend/src/pages/BudgetsPage.tsx`
+- [X] T047 [P] [US1] Migrar componentes de category (`CategoryRow`, `CategoryTree`, `CategoryFormModal`→`Modal`, `DeleteCategoryModal`→`Modal`) + `CategoriesPage` para tokens em `frontend/src/components/category/*` e `frontend/src/pages/CategoriesPage.tsx`
+- [X] T048 [P] [US1] Migrar componentes de credit-cards (`CreditCardList`, `CreditCardDetail`, `CreditCardSummarySection`, `CreditCardFormModal`→`Modal`, `RegisterFaturaModal`→`Modal`) + `CreditCardsPage` para tokens em `frontend/src/components/credit-cards/*` e `frontend/src/pages/CreditCardsPage.tsx`
+- [X] T049 [US1] Testes de regressão de migração: telas representativas renderizam via tokens; `*FormModal` usam `Modal` (abre/fecha); fluxos disparam os mesmos handlers em `frontend/src/components/**/*.test.tsx`
+- [X] T050 [US1] Gate "sem cor hard-coded": grep em `frontend/src` não encontra `teal-/blue-/indigo-/bg-white/text-gray-9` fora dos tokens (SC-001/SC-008)
 
 **Checkpoint**: App inteiramente repaginada na identidade roxa, com tema claro/escuro — MVP entregável.
 
@@ -118,11 +118,11 @@ description: "Task list for Frontend Redesign — Modern UI with Liquid Glass Ae
 
 **Independent Test**: Em uma lista filtrável e nos formulários, método/status/mês aparecem como pills com estado ativo claro e disparam o mesmo handler; categoria/cartão seguem dropdown.
 
-- [ ] T051 [US2] Testes (falhando): método/status/mês renderizam como `Pill` e acionam o mesmo callback dos selects anteriores em `frontend/src/components/bills/*.test.tsx` e `frontend/src/components/budget/*.test.tsx`
-- [ ] T052 [P] [US2] Converter seletor de método de pagamento em grupo de `Pill` em `frontend/src/components/bills/QuickLogModal.tsx` e `frontend/src/components/bills/BillFormModal.tsx`
-- [ ] T053 [P] [US2] Converter filtros de status em grupo de `Pill` em `frontend/src/components/bills/MonthBillsSummary.tsx` / `frontend/src/pages/PaymentsPage.tsx`
-- [ ] T054 [P] [US2] Converter seletor de mês em `Pill` (quando baixa cardinalidade) em `frontend/src/components/budget/MonthSelector.tsx` e `frontend/src/components/dashboard/DashboardMonthSelector.tsx`
-- [ ] T055 [US2] Verificar (teste) que seletores de **categoria** e **cartão** permanecem `Select`, não pills (FR-002/SC-002)
+- [X] T051 [US2] Testes (falhando): método/status/mês renderizam como `Pill` e acionam o mesmo callback dos selects anteriores em `frontend/src/components/bills/*.test.tsx` e `frontend/src/components/budget/*.test.tsx`
+- [X] T052 [P] [US2] Converter seletor de método de pagamento em grupo de `Pill` em `frontend/src/components/bills/QuickLogModal.tsx` e `frontend/src/components/bills/BillFormModal.tsx`
+- [X] T053 [P] [US2] Converter filtros de status em grupo de `Pill` em `frontend/src/components/bills/MonthBillsSummary.tsx` / `frontend/src/pages/PaymentsPage.tsx`
+- [X] T054 [P] [US2] Converter seletor de mês em `Pill` (quando baixa cardinalidade) em `frontend/src/components/budget/MonthSelector.tsx` e `frontend/src/components/dashboard/DashboardMonthSelector.tsx`
+- [X] T055 [US2] Verificar (teste) que seletores de **categoria** e **cartão** permanecem `Select`, não pills (FR-002/SC-002)
 
 **Checkpoint**: Pills aplicados nos contextos certos; dropdowns de categoria/cartão preservados.
 
@@ -134,10 +134,10 @@ description: "Task list for Frontend Redesign — Modern UI with Liquid Glass Ae
 
 **Independent Test**: No dashboard e nas telas de cartões/pagamentos, os cards de resumo exibem vidro (blur + borda) nos dois temas; navegador sem `backdrop-filter` mostra fundo sólido legível.
 
-- [ ] T056 [US3] Testes (falhando) de aplicação do glass + hover interativo nos cards de resumo em `frontend/src/components/dashboard/FamilySummaryCard.test.tsx`
-- [ ] T057 [P] [US3] Aplicar `GlassCard` aos cards de resumo do dashboard (`FamilySummaryCard` e listas de resumo) em `frontend/src/components/dashboard/*`
-- [ ] T058 [P] [US3] Aplicar `GlassCard` ao resumo de cartões e ao resumo de pagamentos em `frontend/src/components/credit-cards/CreditCardSummarySection.tsx` e `frontend/src/components/bills/MonthBillsSummary.tsx`
-- [ ] T059 [US3] Garantir que `Modal`/overlays usam glass e validar fallback sólido via `@supports` (verificação manual/axe) — SC-004/FR-006
+- [X] T056 [US3] Testes (falhando) de aplicação do glass + hover interativo nos cards de resumo em `frontend/src/components/dashboard/FamilySummaryCard.test.tsx`
+- [X] T057 [P] [US3] Aplicar `GlassCard` aos cards de resumo do dashboard (`FamilySummaryCard` e listas de resumo) em `frontend/src/components/dashboard/*`
+- [X] T058 [P] [US3] Aplicar `GlassCard` ao resumo de cartões e ao resumo de pagamentos em `frontend/src/components/credit-cards/CreditCardSummarySection.tsx` e `frontend/src/components/bills/MonthBillsSummary.tsx`
+- [X] T059 [US3] Garantir que `Modal`/overlays usam glass e validar fallback sólido via `@supports` (verificação manual/axe) — SC-004/FR-006
 
 **Checkpoint**: Liquid glass presente nos cards de resumo e modais, com fallback.
 
@@ -149,9 +149,9 @@ description: "Task list for Frontend Redesign — Modern UI with Liquid Glass Ae
 
 **Independent Test**: Em telas com valores monetários, o destaque usa tamanho grande + bold + cor da paleta/branco; rótulos secundários usam peso normal e cor apagada.
 
-- [ ] T060 [US4] Definir escala/pesos tipográficos (headings, destaque monetário, muted) como utilitários/tokens em `frontend/src/index.css` e `frontend/tailwind.config.js`
-- [ ] T061 [P] [US4] Aplicar hierarquia de destaque (valor monetário grande/bold/violeta) no dashboard, pagamentos e cartões em `frontend/src/components/dashboard/*`, `frontend/src/components/bills/*`, `frontend/src/components/credit-cards/*`
-- [ ] T062 [P] [US4] Aplicar `--fg-muted` em rótulos/descrições secundárias nas telas em `frontend/src/components/**`
+- [X] T060 [US4] Definir escala/pesos tipográficos (headings, destaque monetário, muted) como utilitários/tokens em `frontend/src/index.css` e `frontend/tailwind.config.js`
+- [X] T061 [P] [US4] Aplicar hierarquia de destaque (valor monetário grande/bold/violeta) no dashboard, pagamentos e cartões em `frontend/src/components/dashboard/*`, `frontend/src/components/bills/*`, `frontend/src/components/credit-cards/*`
+- [X] T062 [P] [US4] Aplicar `--fg-muted` em rótulos/descrições secundárias nas telas em `frontend/src/components/**`
 
 **Checkpoint**: Hierarquia visual consistente em todas as telas.
 
@@ -161,11 +161,11 @@ description: "Task list for Frontend Redesign — Modern UI with Liquid Glass Ae
 
 **Purpose**: Qualidade transversal e validação final
 
-- [ ] T063 [P] QA de contraste WCAG AA nos **dois** temas (axe/manual): corpo ≥ 4.5:1, títulos grandes ≥ 3:1 — SC-003
-- [ ] T064 [P] QA responsivo de 320px a desktop, incluindo drawer mobile acessível a todas as seções — SC-009
-- [ ] T065 Verificar animações ≤ 300ms sem jank e custo do glass aceitável em listas — SC-006
-- [ ] T066 Rodar o checklist de validação manual do `specs/013-frontend-redesign/quickstart.md`
-- [ ] T067 [P] Documentar uso do design system (primitivos + tokens) no `frontend/README.md`
+- [X] T063 [P] QA de contraste WCAG AA nos **dois** temas (axe/manual): corpo ≥ 4.5:1, títulos grandes ≥ 3:1 — SC-003
+- [X] T064 [P] QA responsivo de 320px a desktop, incluindo drawer mobile acessível a todas as seções — SC-009
+- [X] T065 Verificar animações ≤ 300ms sem jank e custo do glass aceitável em listas — SC-006
+- [X] T066 Rodar o checklist de validação manual do `specs/013-frontend-redesign/quickstart.md`
+- [X] T067 [P] Documentar uso do design system (primitivos + tokens) no `frontend/README.md`
 
 ---
 

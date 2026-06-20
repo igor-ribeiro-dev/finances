@@ -1,5 +1,6 @@
 import { formatCents } from '../../utils/money';
 import type { MonthSummary } from '../../types/bill';
+import { GlassCard } from '@/components/ui';
 
 interface MonthBillsSummaryProps {
   summary: MonthSummary;
@@ -8,44 +9,41 @@ interface MonthBillsSummaryProps {
 
 export function MonthBillsSummary({ summary, projectedCents }: MonthBillsSummaryProps) {
   return (
-    <section
-      aria-label="Resumo do mês"
-      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-    >
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Resumo</h2>
+    <GlassCard aria-label="Resumo do mês" className="p-4">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-fg-muted">Resumo</h2>
       <dl className="space-y-2">
         <div className="flex items-center justify-between">
-          <dt className="text-sm text-gray-600">Previsto</dt>
+          <dt className="text-sm text-fg-muted">Previsto</dt>
           <dd
-            className="text-sm font-medium text-gray-900"
+            className="text-sm font-medium text-fg"
             aria-label={`Previsto: ${formatCents(summary.totalExpectedCents)}`}
           >
             {formatCents(summary.totalExpectedCents)}
           </dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className="text-sm text-gray-600">Pago</dt>
+          <dt className="text-sm text-fg-muted">Pago</dt>
           <dd
-            className="text-sm font-medium text-teal-700"
+            className="text-sm font-medium text-primary"
             aria-label={`Pago: ${formatCents(summary.totalPaidCents)}`}
           >
             {formatCents(summary.totalPaidCents)}
           </dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className="text-sm text-gray-600">Pendente</dt>
+          <dt className="text-sm text-fg-muted">Pendente</dt>
           <dd
-            className="text-sm font-medium text-gray-500"
+            className="text-sm font-medium text-fg-muted"
             aria-label={`Pendente: ${formatCents(summary.totalPendingCents)}`}
           >
             {formatCents(summary.totalPendingCents)}
           </dd>
         </div>
         {projectedCents > 0 && (
-          <div className="flex items-center justify-between border-t border-gray-100 pt-2">
-            <dt className="text-sm text-gray-500">Previstas (fixas)</dt>
+          <div className="flex items-center justify-between border-t border-border pt-2">
+            <dt className="text-sm text-fg-muted">Previstas (fixas)</dt>
             <dd
-              className="text-sm font-medium text-gray-400"
+              className="text-sm font-medium text-fg-muted"
               aria-label={`Previstas (fixas): ${formatCents(projectedCents)}`}
             >
               {formatCents(projectedCents)}
@@ -53,6 +51,6 @@ export function MonthBillsSummary({ summary, projectedCents }: MonthBillsSummary
           </div>
         )}
       </dl>
-    </section>
+    </GlassCard>
   );
 }

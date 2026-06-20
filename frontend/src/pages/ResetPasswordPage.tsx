@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authService } from '../services/auth.service';
 import { PasswordInput } from '../components/auth/PasswordInput';
+import { Button } from '@/components/ui';
 
 export function ResetPasswordPage() {
   const [params] = useSearchParams();
@@ -31,9 +32,9 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
-        <h1 className="text-2xl font-semibold text-gray-900 text-center">Nova senha</h1>
+    <div className="min-h-screen bg-bg flex items-center justify-center px-4">
+      <div className="w-full max-w-sm glass rounded-2xl shadow-overlay p-8 space-y-6">
+        <h1 className="text-2xl font-bold text-fg text-center">Nova senha</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <PasswordInput
             value={password}
@@ -41,14 +42,10 @@ export function ResetPasswordPage() {
             label="Nova senha"
             id="new-password"
           />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <Button type="submit" loading={loading} fullWidth>
             {loading ? 'Salvando...' : 'Redefinir senha'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

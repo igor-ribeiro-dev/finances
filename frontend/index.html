@@ -1,9 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Finances</title>
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('finances.theme');
+          if (saved === 'dark' || saved === 'light') {
+            if (saved === 'dark') document.documentElement.classList.add('dark');
+          } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+            /* light — no class needed */
+          } else {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

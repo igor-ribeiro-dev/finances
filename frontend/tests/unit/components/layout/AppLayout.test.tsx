@@ -6,6 +6,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AppLayout } from '../../../../src/components/layout/AppLayout';
 import { SkeletonPlaceholder } from '../../../../src/components/layout/SkeletonPlaceholder';
+import { ThemeProvider } from '../../../../src/theme/ThemeProvider';
 
 jest.mock('../../../../src/components/layout/Sidebar', () => ({
   Sidebar: ({ onClose }: { onClose?: () => void }) => (
@@ -17,9 +18,11 @@ jest.mock('../../../../src/components/layout/Sidebar', () => ({
 
 function renderLayout(children: React.ReactNode = <div>Content</div>) {
   return render(
-    <MemoryRouter>
-      <AppLayout>{children}</AppLayout>
-    </MemoryRouter>,
+    <ThemeProvider>
+      <MemoryRouter>
+        <AppLayout>{children}</AppLayout>
+      </MemoryRouter>
+    </ThemeProvider>,
   );
 }
 

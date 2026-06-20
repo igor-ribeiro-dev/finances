@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { groupService } from '../services/auth.service';
+import { Button, Input, FormField } from '@/components/ui';
+import { cn } from '@/lib/cn';
 
 export function OnboardingPage() {
   const { setUser } = useAuth();
@@ -58,43 +60,36 @@ export function OnboardingPage() {
 
   if (createdInvite) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-4 text-center">
-          <h2 className="text-xl font-semibold text-gray-900">Grupo criado!</h2>
-          <p className="text-sm text-gray-600">
+      <div className="min-h-screen bg-bg flex items-center justify-center px-4">
+        <div className="w-full max-w-sm glass rounded-2xl shadow-overlay p-8 space-y-4 text-center">
+          <h2 className="text-xl font-bold text-fg">Grupo criado!</h2>
+          <p className="text-sm text-fg-muted">
             Compartilhe este código com os membros da família:
           </p>
-          <div className="bg-blue-50 rounded-lg px-4 py-3">
-            <span className="text-2xl font-mono font-bold text-blue-700 tracking-widest">
+          <div className="bg-primary/10 rounded-xl px-4 py-3">
+            <span className="text-2xl font-mono font-bold text-primary tracking-widest">
               {createdInvite.code}
             </span>
           </div>
           <button
-            onClick={() => {
-              navigator.clipboard?.writeText(createdInvite.link);
-            }}
-            className="text-sm text-blue-600 hover:underline"
+            onClick={() => navigator.clipboard?.writeText(createdInvite.link)}
+            className="text-sm text-primary hover:text-primary-hover underline-offset-2 hover:underline transition-colors"
           >
             Copiar link de convite
           </button>
-          <button
-            onClick={() => navigate('/', { replace: true })}
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
+          <Button onClick={() => navigate('/', { replace: true })} fullWidth>
             Ir para o app
-          </button>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
-        <h1 className="text-2xl font-semibold text-gray-900 text-center">
-          Configurar grupo familiar
-        </h1>
-        <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+    <div className="min-h-screen bg-bg flex items-center justify-center px-4">
+      <div className="w-full max-w-sm glass rounded-2xl shadow-overlay p-8 space-y-6">
+        <h1 className="text-2xl font-bold text-fg text-center">Configurar grupo familiar</h1>
+        <div className="flex rounded-lg border border-border overflow-hidden">
           {(['create', 'join'] as const).map((t) => (
             <button
               key={t}
@@ -102,7 +97,12 @@ export function OnboardingPage() {
                 setTab(t);
                 setError('');
               }}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${tab === t ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={cn(
+                'flex-1 py-2 text-sm font-medium transition-colors',
+                tab === t
+                  ? 'bg-primary text-primary-fg'
+                  : 'text-fg-muted hover:bg-surface hover:text-fg',
+              )}
             >
               {t === 'create' ? 'Criar grupo' : 'Entrar com código'}
             </button>
@@ -111,50 +111,35 @@ export function OnboardingPage() {
 
         {tab === 'create' ? (
           <form onSubmit={handleCreate} className="space-y-4">
-            <div>
-              <label htmlFor="group-name" className="block text-sm font-medium text-gray-700">
-                Nome do grupo
-              </label>
-              <input
+            <FormField label="Nome do grupo" htmlFor="group-name" error={error || undefined}>
+              <Input
                 id="group-name"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
                 placeholder="Ex: Família Silva"
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                invalid={!!error}
               />
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
+            </FormField>
+            <Button type="submit" loading={loading} fullWidth>
               {loading ? 'Criando...' : 'Criar grupo'}
-            </button>
+            </Button>
           </form>
         ) : (
           <form onSubmit={handleJoin} className="space-y-4">
-            <div>
-              <label htmlFor="invite-code" className="block text-sm font-medium text-gray-700">
-                Código de convite
-              </label>
-              <input
+            <FormField label="Código de convite" htmlFor="invite-code" error={error || undefined}>
+              <Input
                 id="invite-code"
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                 maxLength={8}
                 placeholder="XKCD4723"
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono tracking-widest text-center uppercase"
+                invalid={!!error}
+                className="font-mono tracking-widest text-center uppercase"
               />
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
+            </FormField>
+            <Button type="submit" loading={loading} fullWidth>
               {loading ? 'Entrando...' : 'Entrar no grupo'}
-            </button>
+            </Button>
           </form>
         )}
       </div>

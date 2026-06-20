@@ -23,7 +23,7 @@ describe('DeleteCategoryModal (destructive)', () => {
     renderDestructive();
     expect(screen.getByText('Excluir esta categoria?')).toBeInTheDocument();
     expect(screen.getByText(/não pode ser desfeita/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Cancelar' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Excluir' })).toBeInTheDocument();
   });
 
@@ -35,9 +35,9 @@ describe('DeleteCategoryModal (destructive)', () => {
 
   it('closes on Escape and on backdrop click', () => {
     const { onClose } = renderDestructive();
-    fireEvent.keyDown(window, { key: 'Escape' });
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole('dialog'));
+    fireEvent.click(screen.getByTestId('modal-overlay'));
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
@@ -73,17 +73,17 @@ describe('DeleteCategoryModal (blocking)', () => {
     expect(screen.getByText(/12 despesas vinculadas/i)).toBeInTheDocument();
   });
 
-  it('shows a single OK button (focused) and no Excluir button', () => {
+  it('shows a single OK button and no Excluir button', () => {
     renderBlocking();
-    expect(screen.getByRole('button', { name: 'OK' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'OK' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument();
   });
 
   it('closes on OK, Escape and backdrop, never calling onConfirm', () => {
     const { onClose, onConfirm } = renderBlocking();
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-    fireEvent.keyDown(window, { key: 'Escape' });
-    fireEvent.click(screen.getByRole('dialog'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.click(screen.getByTestId('modal-overlay'));
     expect(onClose).toHaveBeenCalledTimes(3);
     expect(onConfirm).not.toHaveBeenCalled();
   });

@@ -50,17 +50,15 @@ export function CreditCardDetail({ cardId, onClose, onRegisterFatura }: CreditCa
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-lg rounded-xl bg-white shadow-xl"
+        className="w-full max-w-lg rounded-xl bg-surface shadow-xl"
       >
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h2 className="text-base font-semibold text-gray-900">
-            {detail ? detail.name : 'Cartão'}
-          </h2>
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h2 className="text-base font-semibold text-fg">{detail ? detail.name : 'Cartão'}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Fechar"
-            className="text-gray-400 hover:text-gray-600"
+            className="text-fg-muted hover:text-fg-muted"
           >
             <X size={18} />
           </button>
@@ -68,19 +66,17 @@ export function CreditCardDetail({ cardId, onClose, onRegisterFatura }: CreditCa
 
         <div className="px-5 py-4">
           {isLoading ? (
-            <p className="text-sm text-gray-500">Carregando…</p>
+            <p className="text-sm text-fg-muted">Carregando…</p>
           ) : error ? (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-danger">{error}</p>
           ) : detail ? (
             <>
-              <div className="mb-4 flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3">
+              <div className="mb-4 flex items-center justify-between rounded-lg bg-bg px-4 py-3">
                 <div>
-                  <p className="text-xs text-gray-500">Em aberto</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {formatCents(detail.openChargesCents)}
-                  </p>
+                  <p className="text-xs text-fg-muted">Em aberto</p>
+                  <p className="text-money">{formatCents(detail.openChargesCents)}</p>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-fg-muted">
                   Fatura fecha em {formatDateBr(detail.cycleCloseDate)}
                 </p>
               </div>
@@ -89,30 +85,30 @@ export function CreditCardDetail({ cardId, onClose, onRegisterFatura }: CreditCa
                 <button
                   type="button"
                   onClick={() => onRegisterFatura(detail)}
-                  className="mb-4 w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                  className="mb-4 w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
                 >
                   Registrar fatura
                 </button>
               )}
 
-              <h3 className="mb-2 text-sm font-medium text-gray-700">Compras em aberto</h3>
+              <h3 className="mb-2 text-sm font-medium text-fg">Compras em aberto</h3>
               {detail.openCharges.length === 0 ? (
-                <p className="rounded-md border border-dashed border-gray-200 p-4 text-center text-sm text-gray-500">
+                <p className="rounded-md border border-dashed border-border p-4 text-center text-sm text-fg-muted">
                   Nenhuma compra em aberto neste cartão.
                 </p>
               ) : (
-                <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                <ul className="divide-y divide-border rounded-lg border border-border">
                   {detail.openCharges.map((c) => (
                     <li key={c.id} className="flex items-center justify-between px-4 py-2 text-sm">
                       <div>
-                        <p className="text-gray-900">{c.description}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-fg">{c.description}</p>
+                        <p className="text-xs text-fg-muted">
                           {formatDateBr(c.paidDate)}
                           {c.paidByMember ? ` · ${c.paidByMember.name}` : ''}
                           {c.category ? ` · ${c.category.name}` : ''}
                         </p>
                       </div>
-                      <span className="font-medium text-gray-900">
+                      <span className="font-medium text-fg">
                         {formatCents(c.actualAmountCents)}
                       </span>
                     </li>

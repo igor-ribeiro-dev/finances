@@ -19,7 +19,7 @@ export function DashboardMonthSelector({ month, onChange }: DashboardMonthSelect
         <button
           type="button"
           onClick={() => onChange(today)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-fg-muted hover:bg-surface hover:text-fg transition-colors"
         >
           Voltar ao mês atual
         </button>

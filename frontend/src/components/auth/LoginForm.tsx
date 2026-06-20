@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { Button, Input, FormField } from '@/components/ui';
 
 export function LoginForm() {
   const { login } = useAuth();
@@ -28,40 +29,26 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-          E-mail
-        </label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-      <div>
-        <label htmlFor="login-password" className="block text-sm font-medium text-gray-700">
-          Senha
-        </label>
-        <input
+      <FormField label="E-mail" htmlFor="email">
+        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </FormField>
+      <FormField label="Senha" htmlFor="login-password" error={error || undefined}>
+        <Input
           id="login-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          invalid={!!error}
         />
-      </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-      >
+      </FormField>
+      <Button type="submit" loading={loading} fullWidth>
         {loading ? 'Entrando...' : 'Entrar'}
-      </button>
-      <p className="text-center text-sm text-gray-500">
-        <Link to="/forgot-password" className="text-blue-600 hover:underline">
+      </Button>
+      <p className="text-center text-sm text-fg-muted">
+        <Link
+          to="/forgot-password"
+          className="text-primary hover:text-primary-hover underline-offset-2 hover:underline"
+        >
           Esqueceu a senha?
         </Link>
       </p>

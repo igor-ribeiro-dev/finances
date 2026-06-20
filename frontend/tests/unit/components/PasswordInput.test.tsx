@@ -13,17 +13,17 @@ describe('PasswordInput', () => {
   it('marks length rule as met when 8+ chars typed', () => {
     render(<PasswordInput value="abcdefgh" onChange={() => {}} />);
     const lengthRule = screen.getByTestId('rule-length');
-    expect(lengthRule).toHaveClass('text-green-600');
+    expect(lengthRule).toHaveClass('text-success');
   });
 
   it('marks digit rule as met when a number is present', () => {
     render(<PasswordInput value="abcdefg1" onChange={() => {}} />);
-    expect(screen.getByTestId('rule-digit')).toHaveClass('text-green-600');
+    expect(screen.getByTestId('rule-digit')).toHaveClass('text-success');
   });
 
   it('marks uppercase rule as met when an uppercase letter is present', () => {
     render(<PasswordInput value="Abcdefg1" onChange={() => {}} />);
-    expect(screen.getByTestId('rule-upper')).toHaveClass('text-green-600');
+    expect(screen.getByTestId('rule-upper')).toHaveClass('text-success');
   });
 
   it('calls onChange when input changes', () => {

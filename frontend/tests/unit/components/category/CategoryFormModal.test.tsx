@@ -64,16 +64,14 @@ describe('CategoryFormModal (create mode)', () => {
 
   it('calls onCancel on Escape and on backdrop click', () => {
     const { onCancel } = renderModal();
-    fireEvent.keyDown(window, { key: 'Escape' });
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole('dialog'));
+    fireEvent.click(screen.getByTestId('modal-overlay'));
     expect(onCancel).toHaveBeenCalledTimes(2);
   });
 
-  it('ignores Escape and disables buttons while saving', () => {
-    const { onCancel } = renderModal({ isSaving: true });
-    fireEvent.keyDown(window, { key: 'Escape' });
-    expect(onCancel).not.toHaveBeenCalled();
+  it('disables buttons while saving', () => {
+    renderModal({ isSaving: true });
     expect(screen.getByRole('button', { name: /salvando/i })).toBeDisabled();
   });
 

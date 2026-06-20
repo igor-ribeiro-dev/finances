@@ -25,8 +25,8 @@ export function Toast({ value, onDismiss, durationMs = 4000 }: ToastProps) {
     <div
       role="status"
       aria-live="polite"
-      className={`fixed bottom-6 right-6 z-50 rounded-lg px-4 py-3 text-sm font-medium shadow-lg ${
-        isSuccess ? 'bg-teal-600 text-white' : 'bg-red-600 text-white'
+      className={`fixed bottom-6 right-6 z-50 rounded-xl px-4 py-3 text-sm font-medium shadow-overlay ${
+        isSuccess ? 'bg-success text-white' : 'bg-danger text-white'
       }`}
     >
       {value.message}

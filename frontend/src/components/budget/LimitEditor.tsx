@@ -21,7 +21,7 @@ export function LimitEditor({ value, onChange, resolvedCents, label, disabled }:
   return (
     <div className="flex items-center gap-2">
       <div
-        className="inline-flex overflow-hidden rounded-md border border-gray-300 text-xs"
+        className="inline-flex overflow-hidden rounded-md border border-border text-xs"
         role="group"
         aria-label={`Tipo de limite — ${label}`}
       >
@@ -30,7 +30,7 @@ export function LimitEditor({ value, onChange, resolvedCents, label, disabled }:
           disabled={disabled}
           aria-pressed={!isPercent}
           onClick={() => onChange({ ...value, type: 'ABSOLUTE' })}
-          className={`px-2 py-1 font-medium ${!isPercent ? 'bg-teal-600 text-white' : 'bg-white text-gray-600'}`}
+          className={`px-2 py-1 font-medium ${!isPercent ? 'bg-primary text-white' : 'bg-surface text-fg-muted'}`}
         >
           R$
         </button>
@@ -39,7 +39,7 @@ export function LimitEditor({ value, onChange, resolvedCents, label, disabled }:
           disabled={disabled}
           aria-pressed={isPercent}
           onClick={() => onChange({ ...value, type: 'PERCENT' })}
-          className={`px-2 py-1 font-medium ${isPercent ? 'bg-teal-600 text-white' : 'bg-white text-gray-600'}`}
+          className={`px-2 py-1 font-medium ${isPercent ? 'bg-primary text-white' : 'bg-surface text-fg-muted'}`}
         >
           %
         </button>
@@ -58,11 +58,11 @@ export function LimitEditor({ value, onChange, resolvedCents, label, disabled }:
               const n = Math.floor(Number(e.target.value));
               onChange({ ...value, percent: Number.isFinite(n) && n >= 0 ? n : 0 });
             }}
-            className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-right text-lg font-medium text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="w-20 rounded-lg border border-border px-3 py-2 text-right text-lg font-medium text-fg focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="0"
           />
-          <span className="text-sm text-gray-500">%</span>
-          <span className="text-sm text-gray-500" aria-label={`Valor resolvido — ${label}`}>
+          <span className="text-sm text-fg-muted">%</span>
+          <span className="text-sm text-fg-muted" aria-label={`Valor resolvido — ${label}`}>
             = {formatCents(resolvedCents)}
           </span>
         </div>

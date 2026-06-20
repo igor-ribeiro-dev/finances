@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { formatCents } from '../../utils/money';
 import { percentOf } from '../../utils/percent';
+import { GlassCard } from '@/components/ui';
 import type { CategorySpending } from '../../types/dashboard';
 
 interface CategorySpendingListProps {
@@ -58,18 +59,15 @@ export function CategorySpendingList({
   rows.sort((a, b) => b.spentCents - a.spentCents);
 
   return (
-    <section
-      aria-labelledby="category-spending-title"
-      className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
-    >
-      <h2 id="category-spending-title" className="text-sm font-medium text-gray-500">
+    <GlassCard aria-labelledby="category-spending-title" className="p-6">
+      <h2 id="category-spending-title" className="text-sm font-medium text-fg-muted">
         Categorias
       </h2>
 
       {rows.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-500">Nenhuma despesa registrada neste mês.</p>
+        <p className="mt-4 text-sm text-fg-muted">Nenhuma despesa registrada neste mês.</p>
       ) : (
-        <ul className="mt-4 divide-y divide-gray-100">
+        <ul className="mt-4 divide-y divide-border">
           {rows.map((row) => {
             const participation = percentOf(row.spentCents, totalSpentCents);
             const capCents = row.cat?.budget?.resolvedCents ?? null;
@@ -86,11 +84,11 @@ export function CategorySpendingList({
 
             const header = (
               <div className="flex flex-1 flex-wrap items-baseline justify-between gap-2">
-                <span className="font-medium text-gray-900">{row.name}</span>
-                <span className="text-sm text-gray-700">
+                <span className="font-medium text-fg">{row.name}</span>
+                <span className="text-sm text-fg">
                   {formatCents(row.spentCents)}
                   {participation !== null && (
-                    <span className="ml-2 text-gray-500">{participation}% do total</span>
+                    <span className="ml-2 text-fg-muted">{participation}% do total</span>
                   )}
                 </span>
               </div>
@@ -106,9 +104,9 @@ export function CategorySpendingList({
                     className="flex w-full items-center gap-2 text-left"
                   >
                     {isOpen ? (
-                      <ChevronDown size={16} className="text-gray-400" aria-hidden />
+                      <ChevronDown size={16} className="text-fg-muted" aria-hidden />
                     ) : (
-                      <ChevronRight size={16} className="text-gray-400" aria-hidden />
+                      <ChevronRight size={16} className="text-fg-muted" aria-hidden />
                     )}
                     {header}
                   </button>
@@ -118,7 +116,7 @@ export function CategorySpendingList({
 
                 {cap && (
                   <p
-                    className={`mt-1 text-xs ${cap.over ? 'font-semibold text-red-600' : 'text-gray-500'}`}
+                    className={`mt-1 text-xs ${cap.over ? 'font-semibold text-danger' : 'text-fg-muted'}`}
                   >
                     {cap.text}
                     {cap.over && ' — excedido'}
@@ -126,7 +124,7 @@ export function CategorySpendingList({
                 )}
 
                 {isOpen && subs.length > 0 && row.cat && (
-                  <ul className="mt-2 space-y-1 border-l border-gray-100 pl-6">
+                  <ul className="mt-2 space-y-1 border-l border-border pl-6">
                     {subs.map((sub) => {
                       const subShare = percentOf(sub.spentCents, row.cat!.spentCents);
                       const subCapCents = sub.budget?.resolvedCents ?? null;
@@ -140,15 +138,15 @@ export function CategorySpendingList({
                           data-testid={`category-sub-${sub.categoryId}`}
                           className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
                         >
-                          <span className="text-gray-700">{sub.name}</span>
-                          <span className="text-gray-600">
+                          <span className="text-fg-muted">{sub.name}</span>
+                          <span className="text-fg-muted">
                             {formatCents(sub.spentCents)}
                             {subShare !== null && (
-                              <span className="ml-2 text-gray-400">{subShare}% da categoria</span>
+                              <span className="ml-2 text-fg-muted">{subShare}% da categoria</span>
                             )}
                             {subCap && (
                               <span
-                                className={`ml-2 ${subCap.over ? 'font-semibold text-red-600' : 'text-gray-400'}`}
+                                className={`ml-2 ${subCap.over ? 'font-semibold text-danger' : 'text-fg-muted'}`}
                               >
                                 {subCap.text}
                               </span>
@@ -162,11 +160,11 @@ export function CategorySpendingList({
                         data-testid={`category-sub-${row.id}-direct`}
                         className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
                       >
-                        <span className="italic text-gray-500">Lançadas direto na categoria</span>
-                        <span className="text-gray-600">
+                        <span className="italic text-fg-muted">Lançadas direto na categoria</span>
+                        <span className="text-fg-muted">
                           {formatCents(row.cat.directSpentCents)}
                           {percentOf(row.cat.directSpentCents, row.cat.spentCents) !== null && (
-                            <span className="ml-2 text-gray-400">
+                            <span className="ml-2 text-fg-muted">
                               {percentOf(row.cat.directSpentCents, row.cat.spentCents)}% da
                               categoria
                             </span>
@@ -181,6 +179,6 @@ export function CategorySpendingList({
           })}
         </ul>
       )}
-    </section>
+    </GlassCard>
   );
 }

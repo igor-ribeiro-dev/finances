@@ -12,17 +12,17 @@ export interface CategoryRowProps {
 export function CategoryRow({ category, isSub = false, onEdit, onDelete }: CategoryRowProps) {
   return (
     <div
-      className={`flex items-center justify-between rounded-lg px-3 py-2 hover:bg-gray-50 ${
+      className={`flex items-center justify-between rounded-lg px-3 py-2 hover:bg-bg ${
         isSub ? 'ml-6' : ''
       }`}
     >
-      <span className="text-sm text-gray-900">{category.name}</span>
+      <span className="text-sm text-fg">{category.name}</span>
       <div className="flex items-center gap-1">
         <button
           type="button"
           aria-label={`Editar ${category.name}`}
           onClick={() => onEdit(category)}
-          className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          className="rounded p-1 text-fg-muted hover:bg-surface hover:text-fg focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <Pencil className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -30,7 +30,7 @@ export function CategoryRow({ category, isSub = false, onEdit, onDelete }: Categ
           type="button"
           aria-label={`Excluir ${category.name}`}
           onClick={() => onDelete(category)}
-          className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+          className="rounded p-1 text-fg-muted hover:bg-surface hover:text-danger focus:outline-none focus:ring-2 focus:ring-red-500"
         >
           <Trash2 className="h-4 w-4" aria-hidden="true" />
         </button>
