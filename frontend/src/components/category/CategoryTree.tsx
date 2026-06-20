@@ -15,14 +15,14 @@ export interface CategoryTreeProps {
 export function CategoryTree({ categories, onEdit, onDelete, onCreateFirst }: CategoryTreeProps) {
   if (categories.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 px-6 py-16 text-center">
-        <Tag className="mb-3 h-8 w-8 text-gray-400" aria-hidden="true" />
-        <p className="mb-4 text-sm text-gray-500">Você ainda não tem categorias.</p>
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border px-6 py-16 text-center">
+        <Tag className="mb-3 h-8 w-8 text-fg-muted" aria-hidden="true" />
+        <p className="mb-4 text-sm text-fg-muted">Você ainda não tem categorias.</p>
         {onCreateFirst && (
           <button
             type="button"
             onClick={onCreateFirst}
-            className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           >
             Cadastre sua primeira categoria
           </button>

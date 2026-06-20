@@ -34,24 +34,24 @@ export function CategoryBudgetTree({
 
   return (
     <section
-      className="rounded-xl border border-gray-200 bg-white p-5"
+      className="rounded-xl border border-border bg-surface p-5"
       aria-labelledby="category-budgets-heading"
     >
-      <h2 id="category-budgets-heading" className="mb-1 text-lg font-semibold text-gray-900">
+      <h2 id="category-budgets-heading" className="mb-1 text-lg font-semibold text-fg">
         Orçamentos por categoria
       </h2>
-      <p className="mb-3 text-sm text-gray-500">
+      <p className="mb-3 text-sm text-fg-muted">
         Distribua o orçamento entre as categorias — em R$ ou em %. Percentual de raiz incide sobre a
         família; de sub-categoria, sobre a raiz.
       </p>
       {roots.length === 0 ? (
-        <p className="text-sm text-gray-400">Nenhuma categoria cadastrada.</p>
+        <p className="text-sm text-fg-muted">Nenhuma categoria cadastrada.</p>
       ) : (
         <ul className="space-y-2">
           {roots.map((root) => (
             <li key={root.categoryId}>
               <div className="flex items-center justify-between gap-4 py-2">
-                <span className="text-sm font-semibold text-gray-800">{root.name}</span>
+                <span className="text-sm font-semibold text-fg">{root.name}</span>
                 <LimitEditor
                   label={root.name}
                   value={drafts[root.categoryId] ?? DEFAULT}
@@ -61,13 +61,13 @@ export function CategoryBudgetTree({
                 />
               </div>
               {(subsByRoot.get(root.categoryId) ?? []).length > 0 && (
-                <ul className="ml-4 border-l border-gray-100 pl-4">
+                <ul className="ml-4 border-l border-border pl-4">
                   {(subsByRoot.get(root.categoryId) ?? []).map((sub) => (
                     <li
                       key={sub.categoryId}
                       className="flex items-center justify-between gap-4 py-2"
                     >
-                      <span className="text-sm text-gray-600">{sub.name}</span>
+                      <span className="text-sm text-fg-muted">{sub.name}</span>
                       <LimitEditor
                         label={`${root.name} · ${sub.name}`}
                         value={drafts[sub.categoryId] ?? DEFAULT}

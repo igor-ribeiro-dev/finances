@@ -120,11 +120,11 @@ export function CategoriesPage() {
   return (
     <div className="p-6 sm:p-8">
       <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Categorias</h1>
+        <h1 className="text-2xl font-semibold text-fg">Categorias</h1>
         <button
           type="button"
           onClick={handleOpenCreate}
-          className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           Nova categoria
@@ -132,7 +132,7 @@ export function CategoriesPage() {
       </header>
 
       {isLoading ? (
-        <p className="text-gray-500" role="status">
+        <p className="text-fg-muted" role="status">
           Carregando categorias…
         </p>
       ) : (

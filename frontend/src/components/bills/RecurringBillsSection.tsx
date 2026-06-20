@@ -17,9 +17,9 @@ const STATUS_LABEL: Record<RecurringBillStatus, string> = {
 };
 
 const STATUS_CLASSES: Record<RecurringBillStatus, string> = {
-  ACTIVE: 'bg-green-100 text-green-700',
+  ACTIVE: 'bg-success/10 text-success',
   PAUSED: 'bg-yellow-100 text-yellow-700',
-  STOPPED: 'bg-red-100 text-red-600',
+  STOPPED: 'bg-danger/10 text-danger',
 };
 
 const INTERVAL_LABEL = {
@@ -99,17 +99,17 @@ function RecurringBillRow({
   }
 
   return (
-    <li className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3">
+    <li className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-3">
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-gray-900">{item.description}</span>
+          <span className="text-sm font-medium text-fg">{item.description}</span>
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CLASSES[item.status]}`}
           >
             {STATUS_LABEL[item.status]}
           </span>
         </div>
-        <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-500">
+        <div className="mt-1 flex flex-wrap gap-3 text-xs text-fg-muted">
           <span>{INTERVAL_LABEL[item.interval]}</span>
           <span>Dia {item.dueDay}</span>
           <span>{formatCents(item.expectedAmountCents)}</span>
@@ -124,7 +124,7 @@ function RecurringBillRow({
               onClick={() => onEdit(item)}
               disabled={isActing}
               aria-label={`Editar conta fixa ${item.description}`}
-              className="rounded-md px-2 py-1 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+              className="rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
             >
               Editar
             </button>
@@ -155,7 +155,7 @@ function RecurringBillRow({
               onClick={handleResume}
               disabled={isActing}
               aria-label={`Retomar conta fixa ${item.description}`}
-              className="rounded-md px-2 py-1 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+              className="rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
             >
               {isActing ? '…' : 'Retomar'}
             </button>
@@ -175,7 +175,7 @@ function RecurringBillRow({
           onClick={handleDelete}
           disabled={isActing}
           aria-label={`Excluir conta fixa ${item.description}`}
-          className="rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+          className="rounded-md px-2 py-1 text-xs font-medium text-danger hover:bg-danger/10 disabled:opacity-50"
         >
           {isActing ? '…' : 'Excluir'}
         </button>
@@ -212,30 +212,30 @@ export function RecurringBillsSection({ onReload }: RecurringBillsSectionProps) 
   return (
     <section aria-label="Contas Fixas">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-base font-semibold text-gray-900">Contas Fixas</h2>
+        <h2 className="text-base font-semibold text-fg">Contas Fixas</h2>
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center gap-1 rounded-lg border border-teal-600 px-3 py-1.5 text-sm font-medium text-teal-700 hover:bg-teal-50"
+          className="inline-flex items-center gap-1 rounded-lg border border-teal-600 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           Nova conta fixa
         </button>
       </div>
 
-      {isLoading && <p className="text-sm text-gray-500">Carregando...</p>}
+      {isLoading && <p className="text-sm text-fg-muted">Carregando...</p>}
 
       {!isLoading && error && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-lg border border-red-200 bg-danger/10 px-4 py-3 text-sm text-danger"
         >
           Erro ao carregar contas fixas: {error.message}
         </div>
       )}
 
       {!isLoading && !error && items.length === 0 && (
-        <p className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-center text-sm text-gray-500">
+        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-fg-muted">
           Nenhuma conta fixa cadastrada.
         </p>
       )}

@@ -44,7 +44,7 @@ describe('QuickLogModal — credit card selector', () => {
 
   it('shows the selector with only ACTIVE cards when credit is chosen', async () => {
     renderModal();
-    fireEvent.click(screen.getByRole('radio', { name: /cartão de crédito/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cartão de crédito/i }));
     const select = await screen.findByLabelText('Cartão');
     expect(select).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Nubank' })).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe('QuickLogModal — credit card selector', () => {
     renderModal();
     fireEvent.change(screen.getByLabelText('Descrição'), { target: { value: 'Mercado' } });
     fireEvent.change(screen.getByLabelText('Valor (R$)'), { target: { value: '5000' } });
-    fireEvent.click(screen.getByRole('radio', { name: /cartão de crédito/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cartão de crédito/i }));
     await screen.findByLabelText('Cartão');
     fireEvent.submit(screen.getByLabelText('Descrição').closest('form')!);
     expect(mockLogSpending).not.toHaveBeenCalled();
@@ -67,7 +67,7 @@ describe('QuickLogModal — credit card selector', () => {
     await waitFor(() => expect(screen.getByLabelText('Responsável')).toBeInTheDocument());
     fireEvent.change(screen.getByLabelText('Descrição'), { target: { value: 'Mercado' } });
     fireEvent.change(screen.getByLabelText('Valor (R$)'), { target: { value: '5000' } });
-    fireEvent.click(screen.getByRole('radio', { name: /cartão de crédito/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cartão de crédito/i }));
     const select = await screen.findByLabelText('Cartão');
     fireEvent.change(select, { target: { value: 'card-nu' } });
     fireEvent.submit(screen.getByLabelText('Descrição').closest('form')!);

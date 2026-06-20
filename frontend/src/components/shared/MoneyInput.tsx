@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, type KeyboardEvent } from 'react';
+import { cn } from '@/lib/cn';
 
 interface MoneyInputProps {
   value: number; // cents
@@ -80,7 +81,13 @@ export function MoneyInput({
       aria-describedby={ariaDescribedBy}
       aria-invalid={ariaInvalid}
       disabled={disabled}
-      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right text-lg font-medium text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-50 disabled:text-gray-500"
+      className={cn(
+        'w-full rounded-lg border px-3 py-2 text-right text-lg font-medium',
+        'bg-surface text-fg border-border',
+        'focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary',
+        'disabled:opacity-50 disabled:cursor-not-allowed',
+        ariaInvalid && 'border-danger focus:ring-danger',
+      )}
     />
   );
 }

@@ -75,11 +75,11 @@ export function CreditCardsPage() {
   return (
     <div className="mx-auto max-w-3xl p-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Cartões de Crédito</h1>
+        <h1 className="text-2xl font-bold text-fg">Cartões de Crédito</h1>
         <button
           type="button"
           onClick={openCreate}
-          className="flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
         >
           <Plus size={16} />
           Novo cartão
@@ -87,15 +87,15 @@ export function CreditCardsPage() {
       </div>
 
       {banner && (
-        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="mb-4 rounded-md border border-amber-200 bg-accent/10 p-3 text-sm text-amber-800">
           {banner}
         </div>
       )}
 
       {isLoading ? (
-        <p className="text-sm text-gray-500">Carregando…</p>
+        <p className="text-sm text-fg-muted">Carregando…</p>
       ) : error ? (
-        <p className="text-sm text-red-600">{error.message}</p>
+        <p className="text-sm text-danger">{error.message}</p>
       ) : (
         <CreditCardList
           cards={cards}

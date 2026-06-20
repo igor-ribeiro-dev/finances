@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Input } from '@/components/ui';
 
 interface Props {
   value: string;
@@ -24,21 +25,21 @@ export function PasswordInput({ value, onChange, label = 'Senha', id = 'password
 
   return (
     <div className="space-y-1">
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700">
+      <label htmlFor={id} className="block text-sm font-medium text-fg">
         {label}
       </label>
       <div className="relative">
-        <input
+        <Input
           id={id}
           type={show ? 'text' : 'password'}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+          className="pr-16"
         />
         <button
           type="button"
           onClick={() => setShow((s) => !s)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg text-xs transition-colors"
         >
           {show ? 'ocultar' : 'mostrar'}
         </button>
@@ -50,7 +51,7 @@ export function PasswordInput({ value, onChange, label = 'Senha', id = 'password
             <li
               key={rule.key}
               data-testid={`rule-${rule.key}`}
-              className={`text-xs ${met ? 'text-green-600' : 'text-gray-400'}`}
+              className={`text-xs ${met ? 'text-success' : 'text-fg-muted'}`}
             >
               {met ? '✓' : '○'} {rule.label}
             </li>

@@ -13,17 +13,17 @@ interface FamilyBudgetSectionProps {
 export function FamilyBudgetSection({ cents, onChange, disabled }: FamilyBudgetSectionProps) {
   return (
     <section
-      className="rounded-xl border border-gray-200 bg-white p-5"
+      className="rounded-xl border border-border bg-surface p-5"
       aria-labelledby="family-budget-heading"
     >
-      <h2 id="family-budget-heading" className="mb-1 text-lg font-semibold text-gray-900">
+      <h2 id="family-budget-heading" className="mb-1 text-lg font-semibold text-fg">
         Orçamento da família
       </h2>
-      <p className="mb-3 text-sm text-gray-500">
+      <p className="mb-3 text-sm text-fg-muted">
         Teto total de gastos do mês. Serve de base para os limites em percentual.
       </p>
       <div className="flex items-center gap-3">
-        <label htmlFor="family-budget-input" className="text-sm font-medium text-gray-700">
+        <label htmlFor="family-budget-input" className="text-sm font-medium text-fg">
           Valor mensal
         </label>
         <div className="w-48">
@@ -35,7 +35,7 @@ export function FamilyBudgetSection({ cents, onChange, disabled }: FamilyBudgetS
             disabled={disabled}
           />
         </div>
-        {cents === 0 && <span className="text-sm text-gray-400">Não definido</span>}
+        {cents === 0 && <span className="text-sm text-fg-muted">Não definido</span>}
       </div>
     </section>
   );

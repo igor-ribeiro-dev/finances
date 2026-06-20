@@ -19,14 +19,14 @@ export function CreditCardList({
 }: CreditCardListProps) {
   if (cards.length === 0) {
     return (
-      <p className="rounded-md border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+      <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-fg-muted">
         Nenhum cartão cadastrado. Adicione um cartão para começar.
       </p>
     );
   }
 
   return (
-    <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+    <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
       {cards.map((card) => (
         <li key={card.id} className="flex items-center justify-between gap-3 p-4">
           <button
@@ -34,17 +34,17 @@ export function CreditCardList({
             onClick={() => onOpen(card)}
             className="flex flex-1 items-center gap-3 text-left"
           >
-            <CreditCardIcon size={20} className="text-indigo-500" />
+            <CreditCardIcon size={20} className="text-primary" />
             <div>
-              <p className="font-medium text-gray-900">
+              <p className="font-medium text-fg">
                 {card.name}
                 {card.status === 'ARCHIVED' && (
-                  <span className="ml-2 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                  <span className="ml-2 rounded bg-surface px-2 py-0.5 text-xs text-fg-muted">
                     Arquivado
                   </span>
                 )}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-fg-muted">
                 Fecha dia {card.closingDay} · Em aberto: {formatCents(card.openChargesCents)}
               </p>
             </div>
@@ -54,7 +54,7 @@ export function CreditCardList({
               type="button"
               onClick={() => onEdit(card)}
               aria-label={`Editar ${card.name}`}
-              className="rounded p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+              className="rounded p-2 text-fg-muted hover:bg-bg hover:text-fg-muted"
             >
               <Pencil size={16} />
             </button>
@@ -63,7 +63,7 @@ export function CreditCardList({
                 type="button"
                 onClick={() => onArchive(card)}
                 aria-label={`Arquivar ${card.name}`}
-                className="rounded p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+                className="rounded p-2 text-fg-muted hover:bg-bg hover:text-fg-muted"
               >
                 <Archive size={16} />
               </button>
@@ -72,7 +72,7 @@ export function CreditCardList({
               type="button"
               onClick={() => onDelete(card)}
               aria-label={`Excluir ${card.name}`}
-              className="rounded p-2 text-gray-400 hover:bg-gray-50 hover:text-red-600"
+              className="rounded p-2 text-fg-muted hover:bg-bg hover:text-danger"
             >
               <Trash2 size={16} />
             </button>

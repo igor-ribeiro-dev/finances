@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { Modal } from '@/components/ui';
 import type { FieldError } from '../../types/credit-card';
 
 export interface CreditCardFormModalProps {
@@ -36,17 +36,6 @@ export function CreditCardFormModal({
     setLocalError(null);
   }, [open, initial]);
 
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !isSaving) onCancel();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, isSaving, onCancel]);
-
-  if (!open) return null;
-
   function validateLocal(): string | null {
     const trimmed = name.trim();
     if (trimmed.length === 0) return 'Informe um nome.';
@@ -70,85 +59,74 @@ export function CreditCardFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {mode === 'create' ? 'Novo cartão' : 'Editar cartão'}
-          </h2>
+    <Modal
+      open={open}
+      onClose={onCancel}
+      title={mode === 'create' ? 'Novo cartão' : 'Editar cartão'}
+      footer={
+        <>
           <button
             type="button"
             onClick={onCancel}
             disabled={isSaving}
-            aria-label="Fechar"
-            className="text-gray-400 hover:text-gray-600"
+            className="rounded-md border border-border px-4 py-2 text-sm font-medium text-fg hover:bg-bg"
           >
-            <X size={20} />
+            Cancelar
           </button>
+          <button
+            type="submit"
+            form="credit-card-form"
+            disabled={isSaving}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
+          >
+            {isSaving ? 'Salvando…' : 'Salvar'}
+          </button>
+        </>
+      }
+    >
+      <form id="credit-card-form" onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="cc-name" className="mb-1 block text-sm font-medium text-fg">
+            Nome
+          </label>
+          <input
+            id="cc-name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={isSaving}
+            maxLength={60}
+            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            placeholder="Ex.: Nubank"
+          />
+          {fieldErrorMessage(fieldErrors, 'name') && (
+            <p className="mt-1 text-sm text-danger">{fieldErrorMessage(fieldErrors, 'name')}</p>
+          )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="cc-name" className="mb-1 block text-sm font-medium text-gray-700">
-              Nome
-            </label>
-            <input
-              id="cc-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={isSaving}
-              maxLength={60}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-              placeholder="Ex.: Nubank"
-            />
-            {fieldErrorMessage(fieldErrors, 'name') && (
-              <p className="mt-1 text-sm text-red-600">{fieldErrorMessage(fieldErrors, 'name')}</p>
-            )}
-          </div>
+        <div>
+          <label htmlFor="cc-closing" className="mb-1 block text-sm font-medium text-fg">
+            Dia de fechamento da fatura
+          </label>
+          <input
+            id="cc-closing"
+            type="number"
+            min={1}
+            max={31}
+            value={closingDay}
+            onChange={(e) => setClosingDay(e.target.value)}
+            disabled={isSaving}
+            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          {fieldErrorMessage(fieldErrors, 'closingDay') && (
+            <p className="mt-1 text-sm text-danger">
+              {fieldErrorMessage(fieldErrors, 'closingDay')}
+            </p>
+          )}
+        </div>
 
-          <div>
-            <label htmlFor="cc-closing" className="mb-1 block text-sm font-medium text-gray-700">
-              Dia de fechamento da fatura
-            </label>
-            <input
-              id="cc-closing"
-              type="number"
-              min={1}
-              max={31}
-              value={closingDay}
-              onChange={(e) => setClosingDay(e.target.value)}
-              disabled={isSaving}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            />
-            {fieldErrorMessage(fieldErrors, 'closingDay') && (
-              <p className="mt-1 text-sm text-red-600">
-                {fieldErrorMessage(fieldErrors, 'closingDay')}
-              </p>
-            )}
-          </div>
-
-          {localError && <p className="text-sm text-red-600">{localError}</p>}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={isSaving}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {isSaving ? 'Salvando…' : 'Salvar'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        {localError && <p className="text-sm text-danger">{localError}</p>}
+      </form>
+    </Modal>
   );
 }

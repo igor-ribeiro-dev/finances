@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { PasswordInput } from './PasswordInput';
+import { Button, Input, FormField } from '@/components/ui';
 
 interface Props {
   onSuccess?: () => void;
@@ -34,39 +35,22 @@ export function RegisterForm({ onSuccess }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-          Nome
-        </label>
-        <input
-          id="name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-      <div>
-        <label htmlFor="reg-email" className="block text-sm font-medium text-gray-700">
-          E-mail
-        </label>
-        <input
+      <FormField label="Nome" htmlFor="name">
+        <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} />
+      </FormField>
+      <FormField label="E-mail" htmlFor="reg-email">
+        <Input
           id="reg-email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-      </div>
+      </FormField>
       <PasswordInput value={password} onChange={setPassword} />
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-      >
+      {error && <p className="text-sm text-danger">{error}</p>}
+      <Button type="submit" loading={loading} fullWidth>
         {loading ? 'Criando conta...' : 'Criar conta'}
-      </button>
+      </Button>
     </form>
   );
 }

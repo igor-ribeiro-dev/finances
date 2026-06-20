@@ -15,13 +15,13 @@ export function BudgetProgressBar({ spentCents, limitCents }: BudgetProgressBarP
   const over = spentCents > limitCents;
   return (
     <div className="flex items-center gap-3">
-      <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-200" aria-hidden>
+      <div className="h-2 flex-1 overflow-hidden rounded-full bg-border" aria-hidden>
         <div
-          className={`h-full rounded-full ${over ? 'bg-red-500' : 'bg-emerald-500'}`}
+          className={`h-full rounded-full transition-all duration-300 ${over ? 'bg-danger' : 'bg-success'}`}
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </div>
-      <span className={`text-sm font-medium ${over ? 'text-red-600' : 'text-gray-700'}`}>
+      <span className={`text-sm font-medium ${over ? 'text-danger' : 'text-fg-muted'}`}>
         {pct}% consumido
       </span>
     </div>

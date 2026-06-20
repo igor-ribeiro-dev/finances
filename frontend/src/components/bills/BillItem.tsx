@@ -98,45 +98,45 @@ export function BillItem({
       <li
         className={`flex flex-wrap items-start justify-between gap-3 rounded-lg border px-4 py-3 ${
           isCancelled
-            ? 'border-red-100 bg-red-50 opacity-70'
+            ? 'border-red-100 bg-danger/10 opacity-70'
             : isPaid
-              ? 'border-green-100 bg-green-50'
-              : 'border-gray-200 bg-white'
+              ? 'border-success/20 bg-success/10'
+              : 'border-border bg-surface'
         }`}
         aria-label={`Conta: ${bill.description}`}
       >
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`text-sm font-medium ${isCancelled ? 'text-gray-400 line-through' : 'text-gray-900'}`}
+              className={`text-sm font-medium ${isCancelled ? 'text-fg-muted line-through' : 'text-fg'}`}
             >
               {bill.description}
             </span>
 
             {/* Status badges */}
             {isPending && bill.isOverdue && (
-              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+              <span className="rounded-full bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">
                 Vencida
               </span>
             )}
             {isPaid && (
-              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+              <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
                 Paga
               </span>
             )}
             {isCancelled && (
-              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">
+              <span className="rounded-full bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">
                 Cancelada
               </span>
             )}
             {bill.recurringBillId && (
-              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                 Conta fixa
               </span>
             )}
           </div>
 
-          <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-500">
+          <div className="mt-1 flex flex-wrap gap-3 text-xs text-fg-muted">
             <span>Vence {formatDate(bill.dueDate)}</span>
             <span aria-label={`Valor esperado: ${formatCents(bill.expectedAmountCents)}`}>
               {formatCents(bill.expectedAmountCents)}
@@ -146,7 +146,7 @@ export function BillItem({
                 <span>Pago {formatDate(bill.payment.paidDate)}</span>
                 {bill.payment.actualAmountCents !== bill.expectedAmountCents && (
                   <span
-                    className="text-teal-700"
+                    className="text-primary"
                     aria-label={`Valor pago: ${formatCents(bill.payment.actualAmountCents)}`}
                   >
                     Real: {formatCents(bill.payment.actualAmountCents)}
@@ -154,12 +154,12 @@ export function BillItem({
                 )}
               </>
             )}
-            {bill.category && <span className="text-gray-400">{bill.category.name}</span>}
+            {bill.category && <span className="text-fg-muted">{bill.category.name}</span>}
             {isPaid && bill.payment?.paidByMember && (
-              <span className="text-gray-400">{bill.payment.paidByMember.name}</span>
+              <span className="text-fg-muted">{bill.payment.paidByMember.name}</span>
             )}
             {!isPaid && bill.ownerMember && (
-              <span className="text-gray-400">{bill.ownerMember.name}</span>
+              <span className="text-fg-muted">{bill.ownerMember.name}</span>
             )}
           </div>
         </div>
@@ -173,7 +173,7 @@ export function BillItem({
                 onClick={() => setPayOpen(true)}
                 disabled={isActing}
                 aria-label={`Pagar conta ${bill.description}`}
-                className="rounded-md bg-teal-600 px-3 py-1 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary-hover disabled:opacity-50"
               >
                 Pagar
               </button>
@@ -182,7 +182,7 @@ export function BillItem({
                 onClick={() => setEditOpen(true)}
                 disabled={isActing}
                 aria-label={`Editar conta ${bill.description}`}
-                className="rounded-md px-2 py-1 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+                className="rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
               >
                 Editar
               </button>
@@ -191,7 +191,7 @@ export function BillItem({
                 onClick={handleDelete}
                 disabled={isActing}
                 aria-label={`Excluir conta ${bill.description}`}
-                className="rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                className="rounded-md px-2 py-1 text-xs font-medium text-danger hover:bg-danger/10 disabled:opacity-50"
               >
                 {isActing ? '…' : 'Excluir'}
               </button>
@@ -204,7 +204,7 @@ export function BillItem({
                 onClick={() => setPayOpen(true)}
                 disabled={isActing}
                 aria-label={`Editar pagamento de ${bill.description}`}
-                className="rounded-md px-2 py-1 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+                className="rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
               >
                 Editar pagamento
               </button>
@@ -225,7 +225,7 @@ export function BillItem({
               onClick={handleReactivate}
               disabled={isActing}
               aria-label={`Reativar conta ${bill.description}`}
-              className="rounded-md px-2 py-1 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+              className="rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
             >
               {isActing ? '…' : 'Reativar'}
             </button>

@@ -17,23 +17,20 @@ export function AllocationSummaryBar({ familyCents, allocatedCents }: Allocation
   const pct = familyCents > 0 ? Math.min(100, Math.round((allocatedCents / familyCents) * 100)) : 0;
 
   return (
-    <div
-      className="rounded-xl border border-gray-200 bg-gray-50 p-4"
-      aria-label="Resumo de alocação"
-    >
+    <div className="rounded-xl border border-border bg-bg p-4" aria-label="Resumo de alocação">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
-        <span className="text-gray-600">
-          Alocado: <strong className="text-gray-900">{formatCents(allocatedCents)}</strong>
-          {familyCents > 0 && <span className="text-gray-400"> de {formatCents(familyCents)}</span>}
+        <span className="text-fg-muted">
+          Alocado: <strong className="text-fg">{formatCents(allocatedCents)}</strong>
+          {familyCents > 0 && <span className="text-fg-muted"> de {formatCents(familyCents)}</span>}
         </span>
-        <span className={over ? 'font-medium text-amber-700' : 'text-gray-600'}>
+        <span className={over ? 'font-medium text-amber-700' : 'text-fg-muted'}>
           {over ? 'Excedido em ' : 'Saldo: '}
           <strong>{formatCents(Math.abs(unallocated))}</strong>
         </span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-border">
         <div
-          className={`h-full ${over ? 'bg-amber-500' : 'bg-teal-500'}`}
+          className={`h-full ${over ? 'bg-accent/100' : 'bg-primary/100'}`}
           style={{ width: `${pct}%` }}
         />
       </div>

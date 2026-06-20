@@ -62,16 +62,16 @@ describe('NavigationItem', () => {
     it('applies active background and text classes', () => {
       renderItem(activeItem, true);
       const link = screen.getByRole('link');
-      expect(link).toHaveClass('bg-teal-50');
-      expect(link).toHaveClass('text-teal-700');
-      expect(link).toHaveClass('font-medium');
+      expect(link).toHaveClass('bg-primary/10');
+      expect(link).toHaveClass('text-primary');
+      expect(link).toHaveClass('font-semibold');
     });
 
     it('applies active left-border indicator class', () => {
       renderItem(activeItem, true);
       const link = screen.getByRole('link');
       expect(link).toHaveClass('border-l-4');
-      expect(link).toHaveClass('border-teal-600');
+      expect(link).toHaveClass('border-primary');
     });
 
     it('does not show the "Em breve" badge', () => {
@@ -97,16 +97,14 @@ describe('NavigationItem', () => {
     it('does not apply active background class', () => {
       renderItem(activeItem, false);
       const link = screen.getByRole('link');
-      expect(link).not.toHaveClass('bg-teal-50');
-      expect(link).not.toHaveClass('text-teal-700');
-      expect(link).not.toHaveClass('font-medium');
+      expect(link).not.toHaveClass('bg-primary/10');
+      expect(link).not.toHaveClass('font-semibold');
     });
 
     it('does not apply the left-border indicator', () => {
       renderItem(activeItem, false);
       const link = screen.getByRole('link');
       expect(link).not.toHaveClass('border-l-4');
-      expect(link).not.toHaveClass('border-teal-600');
     });
 
     it('does not show the "Em breve" badge', () => {
@@ -137,8 +135,8 @@ describe('NavigationItem', () => {
       renderItem(comingSoonItem, false);
       const badge = screen.getByText('Em breve');
       expect(badge).toHaveClass('text-xs');
-      expect(badge).toHaveClass('bg-gray-100');
-      expect(badge).toHaveClass('text-gray-400');
+      expect(badge).toHaveClass('bg-surface');
+      expect(badge).toHaveClass('text-fg-muted');
       expect(badge).toHaveClass('rounded-full');
       expect(badge).toHaveClass('px-2');
       expect(badge).toHaveClass('py-0.5');
@@ -148,7 +146,7 @@ describe('NavigationItem', () => {
       renderItem(comingSoonItem, false);
       const container = screen.getByRole('listitem');
       const inner = container.querySelector('[aria-disabled="true"]') as HTMLElement;
-      expect(inner).toHaveClass('text-gray-400');
+      expect(inner).toHaveClass('text-fg-muted');
     });
 
     it('applies cursor-not-allowed', () => {

@@ -35,7 +35,7 @@ export function BillChecklist({
   if (isLoading) {
     return (
       <section aria-label="Lista de contas" aria-busy="true">
-        <p className="text-sm text-gray-500">Carregando...</p>
+        <p className="text-sm text-fg-muted">Carregando...</p>
       </section>
     );
   }
@@ -50,7 +50,7 @@ export function BillChecklist({
   if (isEmpty) {
     return (
       <section aria-label="Lista de contas">
-        <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
+        <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-fg-muted">
           Nenhuma conta registrada para este mês. Clique em &lsquo;Nova conta&rsquo; para começar.
         </p>
       </section>
@@ -74,17 +74,17 @@ export function BillChecklist({
         {projectedBills.map((projected) => (
           <li
             key={projected.recurringBillId}
-            className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-dashed border-blue-200 bg-blue-50 px-4 py-3"
+            className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-dashed border-primary/30 bg-primary/10 px-4 py-3"
             aria-label={`Conta prevista: ${projected.description}`}
           >
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium text-gray-600">{projected.description}</span>
-                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                <span className="text-sm font-medium text-fg-muted">{projected.description}</span>
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                   Prevista
                 </span>
               </div>
-              <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-500">
+              <div className="mt-1 flex flex-wrap gap-3 text-xs text-fg-muted">
                 <span>Vence {formatDate(projected.dueDate)}</span>
                 <span>{formatCents(projected.expectedAmountCents)}</span>
               </div>
@@ -94,7 +94,7 @@ export function BillChecklist({
                 type="button"
                 onClick={() => onPayProjected(projected)}
                 disabled={payingProjectedId === projected.recurringBillId}
-                className="self-center rounded-lg border border-blue-500 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                className="self-center rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
               >
                 {payingProjectedId === projected.recurringBillId ? 'Criando…' : 'Pagar'}
               </button>

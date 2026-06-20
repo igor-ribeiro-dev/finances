@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Modal, Pill } from '@/components/ui';
 import { billService } from '../../services/bill.service';
 import { creditCardService } from '../../services/credit-card.service';
 import { listGroupMembers, type GroupMember } from '../../services/group.service';
@@ -29,7 +29,6 @@ export function QuickLogModal({ open, onClose, onSuccess }: Props) {
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -51,16 +50,6 @@ export function QuickLogModal({ open, onClose, onSuccess }: Props) {
       .then((list) => setCards(list.filter((c) => c.status === 'ACTIVE')))
       .catch(() => {});
   }, [open]);
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    if (open) document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, onClose]);
-
-  if (!open) return null;
 
   const amountReais = amountCents > 0 ? (amountCents / 100).toFixed(2).replace('.', ',') : '';
 
@@ -113,183 +102,152 @@ export function QuickLogModal({ open, onClose, onSuccess }: Props) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="quick-log-title"
-        className="w-full max-w-md rounded-xl bg-white shadow-xl"
-      >
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h2 id="quick-log-title" className="text-base font-semibold text-gray-900">
-            Registrar gasto
-          </h2>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Registrar gasto"
+      footer={
+        <>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fechar"
-            className="rounded-md p-1 text-gray-400 hover:text-gray-600"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-fg hover:bg-bg"
           >
-            <X size={18} />
+            Cancelar
           </button>
+          <button
+            type="submit"
+            form="quick-log-form"
+            disabled={isSaving}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
+          >
+            {isSaving ? 'Salvando…' : 'Registrar'}
+          </button>
+        </>
+      }
+    >
+      <form id="quick-log-form" onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="ql-description" className="block text-sm font-medium text-fg">
+            Descrição
+          </label>
+          <input
+            id="ql-description"
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Ex: Supermercado"
+            className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          {errors['description'] && (
+            <p className="mt-1 text-xs text-danger">{errors['description']}</p>
+          )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 px-5 py-4">
-          <div>
-            <label htmlFor="ql-description" className="block text-sm font-medium text-gray-700">
-              Descrição
-            </label>
-            <input
-              id="ql-description"
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ex: Supermercado"
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-            />
-            {errors['description'] && (
-              <p className="mt-1 text-xs text-red-600">{errors['description']}</p>
-            )}
-          </div>
+        <div>
+          <label htmlFor="ql-amount" className="block text-sm font-medium text-fg">
+            Valor (R$)
+          </label>
+          <input
+            id="ql-amount"
+            type="text"
+            inputMode="numeric"
+            value={amountReais}
+            onChange={(e) => handleAmountChange(e.target.value)}
+            placeholder="0,00"
+            className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          {errors['amount'] && <p className="mt-1 text-xs text-danger">{errors['amount']}</p>}
+        </div>
 
-          <div>
-            <label htmlFor="ql-amount" className="block text-sm font-medium text-gray-700">
-              Valor (R$)
-            </label>
-            <input
-              id="ql-amount"
-              type="text"
-              inputMode="numeric"
-              value={amountReais}
-              onChange={(e) => handleAmountChange(e.target.value)}
-              placeholder="0,00"
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-            />
-            {errors['amount'] && <p className="mt-1 text-xs text-red-600">{errors['amount']}</p>}
-          </div>
+        <div>
+          <label htmlFor="ql-date" className="block text-sm font-medium text-fg">
+            Data da compra
+          </label>
+          <input
+            id="ql-date"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            max={todayIso()}
+            required
+            className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          {errors['date'] && <p className="mt-1 text-xs text-danger">{errors['date']}</p>}
+        </div>
 
-          <div>
-            <label htmlFor="ql-date" className="block text-sm font-medium text-gray-700">
-              Data da compra
-            </label>
-            <input
-              id="ql-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              max={todayIso()}
-              required
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-            />
-            {errors['date'] && <p className="mt-1 text-xs text-red-600">{errors['date']}</p>}
-          </div>
+        <div>
+          <label htmlFor="ql-member" className="block text-sm font-medium text-fg">
+            Responsável
+          </label>
+          <select
+            id="ql-member"
+            value={paidByMemberId}
+            onChange={(e) => setPaidByMemberId(e.target.value)}
+            required
+            className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="" disabled>
+              Selecione o responsável
+            </option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          {errors['paidByMemberId'] && (
+            <p className="mt-1 text-xs text-danger">{errors['paidByMemberId']}</p>
+          )}
+        </div>
 
+        <div>
+          <p className="block text-sm font-medium text-fg mb-2">Método de pagamento</p>
+          <div className="flex gap-2" role="group" aria-label="Método de pagamento">
+            {(['CASH_OR_DEBIT', 'CREDIT_CARD'] as PaymentMethod[]).map((method) => (
+              <Pill
+                key={method}
+                selected={paymentMethod === method}
+                onClick={() => setPaymentMethod(method)}
+              >
+                {method === 'CASH_OR_DEBIT' ? 'Débito / Dinheiro' : 'Cartão de crédito'}
+              </Pill>
+            ))}
+          </div>
+        </div>
+
+        {paymentMethod === 'CREDIT_CARD' && (
           <div>
-            <label htmlFor="ql-member" className="block text-sm font-medium text-gray-700">
-              Responsável
+            <label htmlFor="ql-card" className="block text-sm font-medium text-fg">
+              Cartão
             </label>
             <select
-              id="ql-member"
-              value={paidByMemberId}
-              onChange={(e) => setPaidByMemberId(e.target.value)}
-              required
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              id="ql-card"
+              value={creditCardId}
+              onChange={(e) => setCreditCardId(e.target.value)}
+              className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="" disabled>
-                Selecione o responsável
+                Selecione o cartão
               </option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
+              {cards.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>
-            {errors['paidByMemberId'] && (
-              <p className="mt-1 text-xs text-red-600">{errors['paidByMemberId']}</p>
+            {errors['creditCardId'] && (
+              <p className="mt-1 text-xs text-danger">{errors['creditCardId']}</p>
             )}
           </div>
+        )}
 
-          <div>
-            <fieldset>
-              <legend className="block text-sm font-medium text-gray-700">
-                Método de pagamento
-              </legend>
-              <div className="mt-2 flex gap-3">
-                {(['CASH_OR_DEBIT', 'CREDIT_CARD'] as PaymentMethod[]).map((method) => (
-                  <label key={method} className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="radio"
-                      name="ql-payment-method"
-                      value={method}
-                      checked={paymentMethod === method}
-                      onChange={() => setPaymentMethod(method)}
-                      className="accent-teal-600"
-                    />
-                    <span className="text-sm text-gray-700">
-                      {method === 'CASH_OR_DEBIT' ? 'Débito / Dinheiro' : 'Cartão de crédito'}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          </div>
-
-          {paymentMethod === 'CREDIT_CARD' && (
-            <div>
-              <label htmlFor="ql-card" className="block text-sm font-medium text-gray-700">
-                Cartão
-              </label>
-              <select
-                id="ql-card"
-                value={creditCardId}
-                onChange={(e) => setCreditCardId(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-              >
-                <option value="" disabled>
-                  Selecione o cartão
-                </option>
-                {cards.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              {errors['creditCardId'] && (
-                <p className="mt-1 text-xs text-red-600">{errors['creditCardId']}</p>
-              )}
-            </div>
-          )}
-
-          {errors['_root'] && (
-            <p role="alert" className="text-sm text-red-600">
-              {errors['_root']}
-            </p>
-          )}
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
-            >
-              {isSaving ? 'Salvando…' : 'Registrar'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        {errors['_root'] && (
+          <p role="alert" className="text-sm text-danger">
+            {errors['_root']}
+          </p>
+        )}
+      </form>
+    </Modal>
   );
 }

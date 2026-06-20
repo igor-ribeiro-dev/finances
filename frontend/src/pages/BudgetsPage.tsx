@@ -94,14 +94,14 @@ export function BudgetsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-5 p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">Orçamentos</h1>
+        <h1 className="text-2xl font-bold text-fg">Orçamentos</h1>
         <div className="flex items-center gap-3">
           <MonthSelector month={month} onChange={setMonth} disabled={isLoading || save.isSaving} />
           <button
             type="button"
             onClick={() => setCopyOpen(true)}
             disabled={isLoading || save.isSaving}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-fg hover:bg-bg disabled:opacity-50"
           >
             <Copy size={16} aria-hidden /> Copiar mês anterior
           </button>
@@ -109,7 +109,7 @@ export function BudgetsPage() {
       </header>
 
       {isLoading || !data ? (
-        <p className="py-10 text-center text-gray-400">Carregando orçamentos…</p>
+        <p className="py-10 text-center text-fg-muted">Carregando orçamentos…</p>
       ) : (
         <>
           <FamilyBudgetSection
@@ -139,7 +139,7 @@ export function BudgetsPage() {
               type="button"
               onClick={() => void save.save(month, buildBody())}
               disabled={save.isSaving}
-              className="rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+              className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
             >
               {save.isSaving ? 'Salvando…' : 'Salvar orçamentos'}
             </button>
